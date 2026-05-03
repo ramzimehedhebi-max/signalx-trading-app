@@ -1,5 +1,5 @@
 import React from "react";
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert } from "react-native";
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert, Platform } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
@@ -10,18 +10,23 @@ export default function Profile() {
   const { user, logout } = useAuth();
   const router = useRouter();
 
-  const onLogout = () =>
+  const doLogout = async () => {
+    await logout();
+    router.replace("/(auth)/welcome");
+  };
+
+  const onLogout = () => {
+    if (Platform.OS === "web") {
+      // eslint-disable-next-line no-alert
+      const ok = typeof window !== "undefined" && window.confirm("Te déconnecter de SignalX ?");
+      if (ok) doLogout();
+      return;
+    }
     Alert.alert("Déconnexion", "Te déconnecter de SignalX ?", [
       { text: "Annuler" },
-      {
-        text: "Déconnecter",
-        style: "destructive",
-        onPress: async () => {
-          await logout();
-          router.replace("/(auth)/welcome");
-        },
-      },
+      { text: "Déconnecter", style: "destructive", onPress: doLogout },
     ]);
+  };
 
   const items: { icon: any; label: string; sub: string; onPress?: () => void }[] = [
     { icon: "shield-checkmark", label: "Sécurité", sub: "Mot de passe & 2FA (bientôt)" },
