@@ -14,8 +14,8 @@ import { Ionicons } from "@expo/vector-icons";
 import Svg, { Path, Defs, LinearGradient, Stop, Line } from "react-native-svg";
 import { useRouter } from "expo-router";
 import * as Haptics from "expo-haptics";
-import { theme, fmtUsd, symbolToBase } from "../../src/theme";
-import { api } from "../../src/lib/api";
+import { theme, fmtUsd, symbolToBase } from "../src/theme";
+import { api } from "../src/lib/api";
 
 const PERIODS = [
   { v: 7, l: "7J" },
