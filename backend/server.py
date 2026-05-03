@@ -607,6 +607,486 @@ async def remove_position(position_id: str, user=Depends(get_current_user)):
     return {"ok": True}
 
 
+# ============ TRADING BOT (PAPER) ============
+DEFAULT_BOT_PAIRS = ["BTCUSDT", "ETHUSDT", "SOLUSDT", "BNBUSDT", "XRPUSDT"]
+
+
+class BotConfig(BaseModel):
+    user_id: str
+    enabled: bool = False
+    mode: str = "paper"  # paper / live (live not implemented yet)
+    strategy: str = "hybrid"  # indicators / hybrid
+    capital_usdt: float = 1000.0
+    paper_balance_usdt: float = 1000.0
+    max_positions: int = 3
+    position_size_pct: float = 20.0  # % of capital per trade
+    stop_loss_pct: float = 3.0
+    take_profit_pct: float = 5.0
+    interval_minutes: int = 5
+    pairs: List[str] = Field(default_factory=lambda: DEFAULT_BOT_PAIRS.copy())
+    last_run_at: Optional[datetime] = None
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+
+class BotConfigUpdate(BaseModel):
+    enabled: Optional[bool] = None
+    capital_usdt: Optional[float] = None
+    max_positions: Optional[int] = None
+    position_size_pct: Optional[float] = None
+    stop_loss_pct: Optional[float] = None
+    take_profit_pct: Optional[float] = None
+    interval_minutes: Optional[int] = None
+    pairs: Optional[List[str]] = None
+    strategy: Optional[str] = None
+
+
+class BotPosition(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    user_id: str
+    symbol: str
+    side: str = "long"
+    quantity: float
+    entry_price: float
+    stop_loss: float
+    take_profit: float
+    entry_time: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    entry_reason: str = ""
+    status: str = "open"  # open / closed
+
+
+class BotTrade(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    user_id: str
+    symbol: str
+    side: str
+    quantity: float
+    entry_price: float
+    exit_price: float
+    entry_time: datetime
+    exit_time: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    pnl: float
+    pnl_pct: float
+    exit_reason: str  # take_profit / stop_loss / signal_reverse / manual
+
+
+async def _get_or_create_bot_config(user_id: str) -> dict:
+    cfg = await db.bot_configs.find_one({"user_id": user_id}, {"_id": 0})
+    if not cfg:
+        cfg_obj = BotConfig(user_id=user_id)
+        await db.bot_configs.insert_one(cfg_obj.dict())
+        cfg = cfg_obj.dict()
+    return cfg
+
+
+@api_router.get("/bot/config")
+async def bot_get_config(user=Depends(get_current_user)):
+    return await _get_or_create_bot_config(user["id"])
+
+
+@api_router.put("/bot/config")
+async def bot_update_config(req: BotConfigUpdate, user=Depends(get_current_user)):
+    await _get_or_create_bot_config(user["id"])
+    update = {k: v for k, v in req.dict().items() if v is not None}
+    if not update:
+        cfg = await db.bot_configs.find_one({"user_id": user["id"]}, {"_id": 0})
+        return cfg
+    # validation
+    if "stop_loss_pct" in update and (update["stop_loss_pct"] <= 0 or update["stop_loss_pct"] > 50):
+        raise HTTPException(status_code=400, detail="Stop-loss doit être entre 0.1% et 50%")
+    if "take_profit_pct" in update and (update["take_profit_pct"] <= 0 or update["take_profit_pct"] > 100):
+        raise HTTPException(status_code=400, detail="Take-profit doit être entre 0.1% et 100%")
+    if "position_size_pct" in update and (update["position_size_pct"] <= 0 or update["position_size_pct"] > 100):
+        raise HTTPException(status_code=400, detail="Taille position invalide (1-100%)")
+    if "max_positions" in update and (update["max_positions"] < 1 or update["max_positions"] > 10):
+        raise HTTPException(status_code=400, detail="max_positions doit être entre 1 et 10")
+    if "capital_usdt" in update and update["capital_usdt"] <= 0:
+        raise HTTPException(status_code=400, detail="Capital invalide")
+
+    await db.bot_configs.update_one({"user_id": user["id"]}, {"$set": update})
+    cfg = await db.bot_configs.find_one({"user_id": user["id"]}, {"_id": 0})
+    return cfg
+
+
+@api_router.post("/bot/reset")
+async def bot_reset(user=Depends(get_current_user)):
+    """Reset paper portfolio: close all positions, reset balance."""
+    cfg = await _get_or_create_bot_config(user["id"])
+    await db.bot_positions.delete_many({"user_id": user["id"]})
+    await db.bot_trades.delete_many({"user_id": user["id"]})
+    await db.bot_configs.update_one(
+        {"user_id": user["id"]},
+        {"$set": {"paper_balance_usdt": cfg.get("capital_usdt", 1000.0), "enabled": False}},
+    )
+    return {"ok": True}
+
+
+@api_router.get("/bot/positions")
+async def bot_get_positions(user=Depends(get_current_user)):
+    cur = db.bot_positions.find({"user_id": user["id"], "status": "open"}, {"_id": 0}).sort("entry_time", -1)
+    positions = await cur.to_list(50)
+    if not positions:
+        return []
+    # enrich with current prices
+    symbols = list({p["symbol"] for p in positions})
+    prices = {}
+    try:
+        async with httpx.AsyncClient(timeout=8.0) as cli:
+            r = await cli.get(
+                f"{BINANCE_BASE}/api/v3/ticker/price",
+                params={"symbols": json.dumps(symbols, separators=(",", ":"))},
+            )
+            if r.status_code == 200:
+                prices = {x["symbol"]: float(x["price"]) for x in r.json()}
+    except Exception:
+        pass
+    out = []
+    for p in positions:
+        cp = prices.get(p["symbol"], p["entry_price"])
+        invested = p["entry_price"] * p["quantity"]
+        cur_val = cp * p["quantity"]
+        pnl = cur_val - invested
+        pnl_pct = (pnl / invested * 100) if invested else 0
+        out.append({
+            **p,
+            "current_price": cp,
+            "current_value": cur_val,
+            "invested": invested,
+            "pnl": pnl,
+            "pnl_pct": pnl_pct,
+        })
+    return out
+
+
+@api_router.get("/bot/trades")
+async def bot_get_trades(user=Depends(get_current_user), limit: int = 50):
+    cur = db.bot_trades.find({"user_id": user["id"]}, {"_id": 0}).sort("exit_time", -1).limit(limit)
+    return await cur.to_list(limit)
+
+
+@api_router.get("/bot/stats")
+async def bot_get_stats(user=Depends(get_current_user)):
+    cfg = await _get_or_create_bot_config(user["id"])
+    trades = await db.bot_trades.find({"user_id": user["id"]}, {"_id": 0}).to_list(1000)
+    open_positions = await db.bot_positions.find(
+        {"user_id": user["id"], "status": "open"}, {"_id": 0}
+    ).to_list(50)
+
+    total_pnl = sum(t["pnl"] for t in trades)
+    wins = [t for t in trades if t["pnl"] > 0]
+    losses = [t for t in trades if t["pnl"] < 0]
+    win_rate = (len(wins) / len(trades) * 100) if trades else 0
+
+    # unrealized pnl on open positions
+    unrealized = 0.0
+    if open_positions:
+        symbols = list({p["symbol"] for p in open_positions})
+        try:
+            async with httpx.AsyncClient(timeout=8.0) as cli:
+                r = await cli.get(
+                    f"{BINANCE_BASE}/api/v3/ticker/price",
+                    params={"symbols": json.dumps(symbols, separators=(",", ":"))},
+                )
+                if r.status_code == 200:
+                    prices = {x["symbol"]: float(x["price"]) for x in r.json()}
+                    for p in open_positions:
+                        cp = prices.get(p["symbol"], p["entry_price"])
+                        unrealized += (cp - p["entry_price"]) * p["quantity"]
+        except Exception:
+            pass
+
+    return {
+        "enabled": cfg.get("enabled", False),
+        "paper_balance_usdt": cfg.get("paper_balance_usdt", cfg.get("capital_usdt", 1000.0)),
+        "capital_usdt": cfg.get("capital_usdt", 1000.0),
+        "total_realized_pnl": total_pnl,
+        "unrealized_pnl": unrealized,
+        "total_pnl": total_pnl + unrealized,
+        "trades_count": len(trades),
+        "wins": len(wins),
+        "losses": len(losses),
+        "win_rate_pct": win_rate,
+        "open_positions_count": len(open_positions),
+        "last_run_at": cfg.get("last_run_at"),
+    }
+
+
+@api_router.post("/bot/run-now")
+async def bot_run_now(user=Depends(get_current_user)):
+    """Force an immediate bot evaluation (manual trigger)."""
+    cfg = await _get_or_create_bot_config(user["id"])
+    if not cfg.get("enabled"):
+        raise HTTPException(status_code=400, detail="Active le bot d'abord")
+    await _bot_check_positions(user["id"])
+    await _bot_evaluate_entries(user["id"], cfg)
+    await db.bot_configs.update_one(
+        {"user_id": user["id"]}, {"$set": {"last_run_at": datetime.now(timezone.utc)}}
+    )
+    return {"ok": True}
+
+
+# ----- Bot engine -----
+async def _eval_signal(closes: List[float], highs: List[float], lows: List[float]) -> dict:
+    """Quick technical signal: returns action / strength / reason."""
+    if len(closes) < 30:
+        return {"action": "HOLD", "strength": 0, "reason": "données insuffisantes", "rsi": None}
+    rsi = compute_rsi(closes, 14) or 50
+    ema12 = compute_ema(closes, 12)
+    ema26 = compute_ema(closes, 26)
+    last = closes[-1]
+    prev = closes[-2]
+    if not ema12 or not ema26:
+        return {"action": "HOLD", "strength": 0, "reason": "EMA insuffisant", "rsi": rsi}
+
+    # bullish trend + oversold bounce
+    bullish = ema12 > ema26
+    bearish = ema12 < ema26
+
+    action = "HOLD"
+    strength = 0
+    reason = ""
+
+    if bullish and rsi < 40 and last > prev:
+        action = "BUY"
+        strength = int(min(100, (40 - rsi) * 3 + 50))
+        reason = f"Tendance haussière (EMA12>EMA26) + RSI bas {rsi:.0f} = rebond probable"
+    elif bullish and 40 <= rsi < 55 and last > prev:
+        action = "BUY"
+        strength = 60
+        reason = f"Reprise haussière confirmée (RSI {rsi:.0f}, prix>prix-1)"
+    elif bearish and rsi > 65:
+        action = "SELL"
+        strength = int(min(100, (rsi - 65) * 3 + 50))
+        reason = f"Tendance baissière + RSI surachat {rsi:.0f}"
+
+    return {"action": action, "strength": strength, "reason": reason, "rsi": rsi, "ema12": ema12, "ema26": ema26}
+
+
+async def _claude_validate(symbol: str, interval: str, indicators: dict, signal: dict) -> dict:
+    """Ask Claude to validate a candidate trade. Returns {'approved': bool, 'reason': str}."""
+    try:
+        system_msg = (
+            "Tu es un trader algorithmique pragmatique en paper trading (test, pas d'argent réel). "
+            "Tu reçois un signal d'achat technique déjà filtré (RSI + EMA). Ton job: APPROUVER par défaut "
+            "sauf si tu vois un risque évident (forte volatilité baissière, retournement clair, news négative). "
+            "Sois constructif, on apprend de chaque trade en paper. "
+            "Réponds STRICTEMENT en JSON: {\"approved\": true|false, \"reason\": \"explication courte FR (1 phrase)\"}."
+        )
+        user_text = (
+            f"Symbole: {symbol} ({interval})\nSignal: {signal['action']} (force {signal['strength']}%)\n"
+            f"Logique: {signal['reason']}\n"
+            f"RSI={indicators.get('rsi14') or signal.get('rsi'):.1f} "
+            f"EMA12={indicators.get('ema12') or signal.get('ema12'):.4f} "
+            f"EMA26={indicators.get('ema26') or signal.get('ema26'):.4f}\n"
+            f"Approuves-tu ?"
+        )
+        chat = LlmChat(
+            api_key=EMERGENT_LLM_KEY,
+            session_id=f"botval-{symbol}-{int(datetime.now(timezone.utc).timestamp())}",
+            system_message=system_msg,
+        ).with_model("anthropic", "claude-sonnet-4-5-20250929")
+        resp = await chat.send_message(UserMessage(text=user_text))
+        cleaned = resp.strip().strip("`").lstrip("json").strip()
+        parsed = json.loads(cleaned)
+        return {"approved": bool(parsed.get("approved", True)), "reason": str(parsed.get("reason", ""))}
+    except Exception as e:
+        logger.warning(f"Claude validation failed: {e}")
+        # fallback: approve if signal strength >= 55 to avoid blocking the bot when LLM unavailable
+        return {"approved": signal.get("strength", 0) >= 55, "reason": "Validation IA indisponible — règle technique appliquée"}
+
+
+async def _close_position(user_id: str, position: dict, exit_price: float, reason: str):
+    invested = position["entry_price"] * position["quantity"]
+    exit_val = exit_price * position["quantity"]
+    pnl = exit_val - invested
+    pnl_pct = (pnl / invested * 100) if invested else 0
+
+    trade = BotTrade(
+        user_id=user_id,
+        symbol=position["symbol"],
+        side=position["side"],
+        quantity=position["quantity"],
+        entry_price=position["entry_price"],
+        exit_price=exit_price,
+        entry_time=position["entry_time"],
+        pnl=pnl,
+        pnl_pct=pnl_pct,
+        exit_reason=reason,
+    )
+    await db.bot_trades.insert_one(trade.dict())
+    await db.bot_positions.update_one(
+        {"id": position["id"]}, {"$set": {"status": "closed"}}
+    )
+    # credit balance back
+    await db.bot_configs.update_one(
+        {"user_id": user_id},
+        {"$inc": {"paper_balance_usdt": exit_val}},
+    )
+    logger.info(f"BOT CLOSE {position['symbol']} pnl={pnl:.2f} ({pnl_pct:.2f}%) reason={reason}")
+
+
+async def _bot_check_positions(user_id: str):
+    """Check open positions for SL/TP exit."""
+    open_pos = await db.bot_positions.find(
+        {"user_id": user_id, "status": "open"}, {"_id": 0}
+    ).to_list(50)
+    if not open_pos:
+        return
+    symbols = list({p["symbol"] for p in open_pos})
+    try:
+        async with httpx.AsyncClient(timeout=8.0) as cli:
+            r = await cli.get(
+                f"{BINANCE_BASE}/api/v3/ticker/price",
+                params={"symbols": json.dumps(symbols, separators=(",", ":"))},
+            )
+            r.raise_for_status()
+            prices = {x["symbol"]: float(x["price"]) for x in r.json()}
+    except Exception as e:
+        logger.warning(f"Bot check prices error: {e}")
+        return
+
+    for p in open_pos:
+        cp = prices.get(p["symbol"])
+        if not cp:
+            continue
+        if cp <= p["stop_loss"]:
+            await _close_position(user_id, p, cp, "stop_loss")
+        elif cp >= p["take_profit"]:
+            await _close_position(user_id, p, cp, "take_profit")
+
+
+async def _bot_evaluate_entries(user_id: str, cfg: dict):
+    """Look for new entries on configured pairs."""
+    open_pos = await db.bot_positions.find(
+        {"user_id": user_id, "status": "open"}, {"_id": 0}
+    ).to_list(50)
+    if len(open_pos) >= cfg["max_positions"]:
+        return
+    open_syms = {p["symbol"] for p in open_pos}
+    pairs = [s for s in cfg.get("pairs", DEFAULT_BOT_PAIRS) if s not in open_syms]
+
+    cfg_now = await db.bot_configs.find_one({"user_id": user_id}, {"_id": 0})
+    balance = cfg_now.get("paper_balance_usdt", cfg["capital_usdt"])
+    capital = cfg_now.get("capital_usdt", 1000.0)
+    size_pct = cfg_now.get("position_size_pct", 20.0)
+    trade_size = capital * (size_pct / 100.0)
+    if balance < trade_size:
+        return  # not enough paper cash
+
+    candidates = []
+    async with httpx.AsyncClient(timeout=10.0) as cli:
+        for sym in pairs:
+            try:
+                r = await cli.get(
+                    f"{BINANCE_BASE}/api/v3/klines",
+                    params={"symbol": sym, "interval": "15m", "limit": 100},
+                )
+                if r.status_code != 200:
+                    continue
+                kl = r.json()
+                closes = [float(k[4]) for k in kl]
+                highs = [float(k[2]) for k in kl]
+                lows = [float(k[3]) for k in kl]
+                sig = await _eval_signal(closes, highs, lows)
+                if sig["action"] == "BUY" and sig["strength"] >= 50:
+                    candidates.append({
+                        "symbol": sym,
+                        "signal": sig,
+                        "last_price": closes[-1],
+                    })
+            except Exception as e:
+                logger.warning(f"Bot kline error {sym}: {e}")
+
+    # take strongest candidate first
+    candidates.sort(key=lambda c: c["signal"]["strength"], reverse=True)
+    available_slots = cfg["max_positions"] - len(open_pos)
+    logger.info(
+        f"BOT SCAN user={user_id[:8]} candidates={len(candidates)} "
+        f"slots={available_slots} balance={balance:.2f} "
+        f"top={[(c['symbol'], c['signal']['action'], c['signal']['strength']) for c in candidates[:3]]}"
+    )
+
+    for c in candidates[:available_slots]:
+        # build indicators dict for Claude
+        indicators = {
+            "lastPrice": c["last_price"],
+            "rsi14": c["signal"].get("rsi"),
+            "ema12": c["signal"].get("ema12"),
+            "ema26": c["signal"].get("ema26"),
+        }
+        # Hybrid mode: validate with Claude only for medium-strength signals
+        approve = True
+        validation_reason = ""
+        if cfg.get("strategy") == "hybrid" and c["signal"]["strength"] < 70:
+            v = await _claude_validate(c["symbol"], "15m", indicators, c["signal"])
+            approve = v["approved"]
+            validation_reason = v["reason"]
+        if not approve:
+            logger.info(f"BOT REJECTED {c['symbol']} by Claude: {validation_reason}")
+            continue
+
+        cfg_now = await db.bot_configs.find_one({"user_id": user_id}, {"_id": 0})
+        balance = cfg_now.get("paper_balance_usdt", 0)
+        if balance < trade_size:
+            break
+        entry = c["last_price"]
+        qty = trade_size / entry
+        sl = entry * (1 - cfg_now["stop_loss_pct"] / 100)
+        tp = entry * (1 + cfg_now["take_profit_pct"] / 100)
+
+        pos = BotPosition(
+            user_id=user_id,
+            symbol=c["symbol"],
+            quantity=qty,
+            entry_price=entry,
+            stop_loss=sl,
+            take_profit=tp,
+            entry_reason=f"{c['signal']['reason']} | IA: {validation_reason}".strip(" |"),
+        )
+        await db.bot_positions.insert_one(pos.dict())
+        await db.bot_configs.update_one(
+            {"user_id": user_id},
+            {"$inc": {"paper_balance_usdt": -trade_size}},
+        )
+        logger.info(f"BOT OPEN {c['symbol']} @ {entry} qty={qty:.6f} SL={sl} TP={tp} strength={c['signal']['strength']}")
+
+
+async def _bot_loop():
+    logger.info("Bot engine loop started")
+    await asyncio.sleep(15)  # let app boot
+    while True:
+        try:
+            now = datetime.now(timezone.utc)
+            cfgs = await db.bot_configs.find({"enabled": True}, {"_id": 0}).to_list(500)
+            for cfg in cfgs:
+                try:
+                    user_id = cfg["user_id"]
+                    # always check SL/TP
+                    await _bot_check_positions(user_id)
+                    # only evaluate new entries every interval_minutes
+                    last_run = cfg.get("last_run_at")
+                    interval = cfg.get("interval_minutes", 5)
+                    should_run = (
+                        not last_run
+                        or (now - last_run.replace(tzinfo=timezone.utc) if last_run.tzinfo is None else now - last_run)
+                        >= timedelta(minutes=interval)
+                    )
+                    if should_run:
+                        await _bot_evaluate_entries(user_id, cfg)
+                        await db.bot_configs.update_one(
+                            {"user_id": user_id}, {"$set": {"last_run_at": now}}
+                        )
+                except Exception as e:
+                    logger.exception(f"Bot loop user error: {e}")
+        except Exception as e:
+            logger.exception(f"Bot loop error: {e}")
+        await asyncio.sleep(60)
+
+
+@app.on_event("startup")
+async def _start_bot():
+    asyncio.create_task(_bot_loop())
+
+
 # ============ HEALTH ============
 @api_router.get("/")
 async def root():

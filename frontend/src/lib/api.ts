@@ -105,4 +105,14 @@ export const api = {
     }),
   deletePosition: (id: string) =>
     request<any>(`/portfolio/${id}`, { method: "DELETE" }),
+
+  // Bot
+  botConfig: () => request<any>("/bot/config"),
+  botUpdateConfig: (cfg: any) =>
+    request<any>("/bot/config", { method: "PUT", body: JSON.stringify(cfg) }),
+  botPositions: () => request<any[]>("/bot/positions"),
+  botTrades: () => request<any[]>("/bot/trades"),
+  botStats: () => request<any>("/bot/stats"),
+  botReset: () => request<any>("/bot/reset", { method: "POST" }),
+  botRunNow: () => request<any>("/bot/run-now", { method: "POST" }),
 };

@@ -61,10 +61,33 @@ export default function TabsLayout() {
         }}
       />
       <Tabs.Screen
+        name="bot"
+        options={{
+          title: "Bot IA",
+          tabBarIcon: ({ color, size, focused }) => (
+            <View>
+              <Ionicons name="rocket" size={size} color={color} />
+              {focused && (
+                <View
+                  style={{
+                    position: "absolute",
+                    top: -2,
+                    right: -2,
+                    width: 6,
+                    height: 6,
+                    borderRadius: 3,
+                    backgroundColor: theme.colors.buy,
+                  }}
+                />
+              )}
+            </View>
+          ),
+        }}
+      />
+      <Tabs.Screen
         name="portfolio"
         options={{
-          title: "Portefeuille",
-          tabBarIcon: ({ color, size }) => <Ionicons name="briefcase" size={size} color={color} />,
+          href: null,
         }}
       />
       <Tabs.Screen

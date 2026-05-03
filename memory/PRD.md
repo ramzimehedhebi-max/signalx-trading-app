@@ -25,6 +25,15 @@ French mobile app that tells users **when to buy and sell** crypto on Binance us
 - GET/POST/DELETE /alerts
 - GET/POST/DELETE /portfolio
 
+## Bot IA — Trading automatique (paper) — V2
+- Onglet dédié "Bot IA" remplace "Portefeuille"
+- Toggle ON/OFF, scanner toutes les 5 min en arrière-plan + bouton "Forcer un scan"
+- Stratégie hybride : RSI(14) + EMA12/EMA26 → si signal force ≥ 70 ouverture auto, sinon validation Claude Sonnet 4.5
+- Paramétrable : capital virtuel, taille position %, max positions simultanées, SL %, TP %, paires à trader
+- Stop-loss et take-profit auto-déclenchés sur cycle 60s
+- Endpoints: GET/PUT /api/bot/config, GET /api/bot/positions, GET /api/bot/trades, GET /api/bot/stats, POST /api/bot/reset, POST /api/bot/run-now
+- Stats UI : balance paper USDT, P&L total, win rate, positions ouvertes vs max, historique des trades
+
 ## Future Enhancements
 - Push notifications for price alerts (Expo Notifications)
 - WebSocket live ticker stream for the coin detail screen
