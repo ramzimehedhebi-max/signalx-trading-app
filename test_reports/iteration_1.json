@@ -1,0 +1,46 @@
+{
+  "summary": "Comprehensive backend + frontend testing of SignalX French crypto-trading app. Backend pytest suite: 20/20 passing (100%). Frontend E2E (mobile viewport): auth, dashboard, markets, signals, portfolio, profile all render correctly with French copy and SignalX branding. AI signal generation (Claude Sonnet 4.5) worked end-to-end. Only critical issue: logout does not redirect on web (Alert.alert confirmation dialog is not functional on react-native-web so the confirm callback never fires).",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "POST /api/ai/signal", "issue": "Observed a transient 502 'Service IA indisponible' with backend error 'litellm.BadRequestError: Budget has been exceeded! Current cost: 0.005, Max budget: 0.001'. Subsequent calls succeeded. This appears to be a rate/budget throttle on the Emergent LLM key. Worth monitoring in production; consider adding a user-friendly message + retry hint and possibly a soft cache per (symbol, interval) to avoid repeat LLM spend."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "app/(tabs)/profile.tsx - onLogout", "issue": "On web, Alert.alert('Déconnexion', ...) confirmation dialog is not interactable on react-native-web; the 'Déconnecter' onPress never runs, so logout() + router.replace('/(auth)/welcome') do not execute. Confirmed: after tapping the logout button, URL stays at /profile and user remains logged in. Recommended fix: on web use a custom modal / window.confirm, or remove the confirmation and call logout()+router.replace directly (or use Platform.OS === 'web' branch).", "testID": "profile-logout-btn", "priority": "HIGH"}
+    ],
+    "integration_issues": [],
+    "design_issues": [],
+    "react_native_issues": [
+      {"component": "Global", "issue": "Many RN Web deprecation warnings in expo logs: '\"shadow*\" style props are deprecated. Use \"boxShadow\".' — non-blocking but should migrate styles to the newer boxShadow prop for web."}
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/conftest.py",
+    "/app/backend/tests/test_backend_api.py",
+    "/app/test_reports/pytest/pytest_results.xml"
+  ],
+  "action_items": [
+    "Fix logout flow on web: replace Alert.alert confirmation with Platform-aware confirm (use window.confirm or a custom Modal on web) so logout() + router.replace('/(auth)/welcome') actually run.",
+    "Add graceful UI feedback for the 'Service IA indisponible' 502 (Emergent LLM budget throttle): show a clear French retry message and disable the button briefly.",
+    "Optional: cache LLM signals per (symbol, interval) for a short TTL to reduce LLM cost and avoid budget throttling.",
+    "Migrate deprecated RN 'shadow*' styles to 'boxShadow' for web."
+  ],
+  "critical_code_review_comments": [
+    "server.py is ~637 lines — still within limits but approaching threshold; consider splitting into routers (auth, market, signals, watchlist, portfolio) for maintainability.",
+    "/api/ai/signal always calls the LLM with no caching — a user spamming the button burns Emergent LLM budget quickly (already hit once during testing).",
+    "Portfolio endpoint fetches all prices via json-array param, but if any symbol in the portfolio isn't on Binance the whole call could fail; consider per-symbol fallback.",
+    "JWT_EXPIRE_MINUTES=43200 (30 days) is long; acceptable for consumer app but flag."
+  ],
+  "updated_files": [
+    "/app/backend/tests/conftest.py (created)",
+    "/app/backend/tests/test_backend_api.py (created)"
+  ],
+  "success_rate": {"backend": "100% (20/20)", "frontend": "~85% (5/6 major flows OK; logout broken on web)"},
+  "seed_data_creation": "Used existing trader@test.com user. Test suite also creates TEST_ users and positions which are cleaned within the CRUD tests (watchlist, portfolio self-cleanup). No stale seed left.",
+  "retest_needed": true,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Backend public URL: https://binance-profit-2.preview.emergentagent.com. Test user: trader@test.com / test1234. Run `pytest /app/backend/tests/ -v` for full regression. Known issue to verify after fix: tap logout button on /profile via web — expect redirect to /(auth)/welcome. For Signals flow, a transient 502 from /api/ai/signal can occur when Emergent LLM per-key budget throttles; retry once before failing. Frontend initial web bundle takes ~25s, wait accordingly.",
+  "rca_of_issue": "Logout bug RCA: app/(tabs)/profile.tsx wraps logout in Alert.alert([cancel, confirm]). react-native-web has limited support for Alert.alert with buttons — the confirmation UI either doesn't appear or isn't clickable via normal interactions, so the onPress handler of the 'Déconnecter' button never executes. Therefore logout() and router.replace() are never called, leaving user on /profile. Reproduction: open web preview, login as trader@test.com, tap Profile tab, tap 'Se déconnecter' — observe no navigation and user remains authenticated. Mitigation: use Platform.OS === 'web' ? window.confirm(...) ? ... : Alert.alert(...), OR call logout()+router.replace directly without confirmation."
+}
