@@ -1,0 +1,103 @@
+{
+  "theme": "dark",
+  "archetype": "5 (Jewel & Luxury)",
+  "justification": "A serious Binance crypto trading app needs to exude trust, precision, and premium exclusivity. Dark mode reduces eye strain for continuous tracking. The Jewel archetype uses deep midnight tones to make vibrant data (Binance yellow, signal green/red) stand out sharply, feeling like a high-end Bloomberg terminal mixed with modern luxury.",
+  "colors": {
+    "background": "#090C15",
+    "surface": "#131826",
+    "surface_glass": "rgba(255, 255, 255, 0.03)",
+    "primary": "#F3BA2F",
+    "primary_hover": "#F5C953",
+    "text_primary": "#FFFFFF",
+    "text_secondary": "#8F9CAE",
+    "border": "rgba(255, 255, 255, 0.08)",
+    "signal_buy": "#00E396",
+    "signal_sell": "#FF4560",
+    "signal_hold": "#3D85C6"
+  },
+  "typography": {
+    "primary_font": "Outfit",
+    "secondary_font": "Manrope",
+    "h1": "text-4xl tracking-tight font-black text-white",
+    "h2": "text-2xl tracking-tight font-bold text-white",
+    "h3": "text-xl font-semibold text-white",
+    "body": "text-base font-normal text-[#8F9CAE] leading-relaxed",
+    "numbers": "font-mono text-white tracking-tighter",
+    "labels": "text-xs font-bold uppercase tracking-[0.2em] text-[#8F9CAE]"
+  },
+  "spacing_and_layout": {
+    "screen_padding": "p-6",
+    "card_padding": "p-5",
+    "gap_standard": "gap-4",
+    "gap_large": "gap-8",
+    "border_radius": {
+      "card": "rounded-3xl",
+      "button": "rounded-full",
+      "input": "rounded-2xl"
+    },
+    "layout_rules": [
+      "Mobile-first: All primary actions (Buy/Sell, Tabs) must be anchored to the bottom within thumb reach.",
+      "Data Density: Use tight margins (gap-2) between metric label and value, but generous padding (p-6) around the entire widget.",
+      "Asymmetry: Avoid rigid center alignment. Left-align numerical data for scannability, right-align corresponding sparklines."
+    ]
+  },
+  "components": {
+    "buttons": {
+      "primary": "bg-[#F3BA2F] text-black font-bold text-base rounded-full py-4 px-8 w-full shadow-[0_4px_14px_rgba(243,186,47,0.39)]",
+      "secondary": "bg-[#131826] text-white border border-white/10 font-semibold rounded-full py-4 px-8"
+    },
+    "cards": {
+      "glass": "bg-white/[0.03] backdrop-blur-xl border border-white/[0.08] rounded-3xl p-5 shadow-2xl"
+    },
+    "charts": {
+      "candlestick": "Use vivid solid colors (no gradients) for candles to ensure maximum precision. Red for bear, Green for bull.",
+      "ai_signal_box": "Highlight the Claude 4.5 signal in a distinct floating card at the top or bottom of the chart with a glowing border (tracing beam effect) using the signal color (Buy/Sell)."
+    },
+    "inputs": {
+      "default": "bg-[#131826] border border-white/10 rounded-2xl p-4 text-white placeholder:text-[#8F9CAE] focus:border-[#F3BA2F]"
+    }
+  },
+  "screens": {
+    "onboarding": {
+      "layout": "Full-screen background image, heavy bottom gradient overlay to ensure text readability, sticky bottom CTA.",
+      "media": "onboarding_hero"
+    },
+    "dashboard": {
+      "layout": "Sticky top header with balance. Horizontal scroll for Watchlist (bento cards). Vertical list for Top Movers."
+    },
+    "coin_detail": {
+      "layout": "Header with Coin Info, Interactive Chart area (50% screen height), AI Signal bottom sheet/overlay (sticky), Buy/Sell action buttons at bottom safe area."
+    }
+  },
+  "motion_and_interaction": {
+    "transitions": "Spring animations for all modal/bottom sheet reveals.",
+    "buttons": "Active opacity reduction on press. Haptic feedback is MANDATORY for all trade actions and tab switches.",
+    "lists": "Staggered fade-up entry for market lists."
+  },
+  "media": {
+    "image_urls": {
+      "onboarding_hero": {
+        "url": "https://static.prod-images.emergentagent.com/jobs/7c6a6fa1-aaf5-4739-b507-171c0af670d4/images/6e0eaa83f67e1677db7291837d87cd6f46cfe7427cadba8b116f8a87cc546ab0.png",
+        "description": "Cinematic 3D glowing coin for Onboarding / Welcome Screen background",
+        "category": "hero"
+      },
+      "binance_logo": {
+        "url": "https://images.unsplash.com/photo-1670269069776-a1337c703669?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA2OTV8MHwxfHNlYXJjaHwxfHxiaW5hbmNlJTIwbG9nb3xlbnwwfHx8fDE3Nzc4MDY2NDB8MA&ixlib=rb-4.1.0&q=85",
+        "description": "Binance logo for branding or login screen",
+        "category": "logo"
+      }
+    }
+  },
+  "accessibility_and_testing": {
+    "contrast": "Ensure all text over glassmorphism cards meets 4.5:1 contrast ratio. Do not use pure transparent backgrounds without blur.",
+    "test_ids": "All buttons, tabs, and market items MUST have `data-testid` attributes (e.g., `data-testid=\"buy-btc-button\"`).",
+    "language": "UI must accommodate longer French strings (e.g., 'S\\'inscrire' instead of 'Sign Up', 'Tableau de bord' instead of 'Dashboard'). Avoid fixed widths for text containers."
+  },
+  "instructions_to_main_agent": [
+    "Use NativeWind or equivalent Tailwind utility setup for React Native Expo.",
+    "Do NOT use web-only components (like Shadcn Web) directly in React Native without adapting them to native equivalents (e.g., use React Native Modals or Bottom Sheets instead of Web Dialogs).",
+    "Apply Safe Area boundaries so headers and bottom tabs don't overlap with device notches.",
+    "Focus heavily on the 'AI Signal' UI - it should look like an authoritative intelligence feed (Claude Sonnet 4.5) with reasoning text and confidence score.",
+    "Build the files in .js as requested, prioritizing functional components and hooks."
+  ]
+}
