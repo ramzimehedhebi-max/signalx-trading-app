@@ -115,4 +115,6 @@ export const api = {
   botStats: () => request<any>("/bot/stats"),
   botReset: () => request<any>("/bot/reset", { method: "POST" }),
   botRunNow: () => request<any>("/bot/run-now", { method: "POST" }),
+  botBacktest: (params: any) =>
+    request<any>("/bot/backtest", { method: "POST", body: JSON.stringify(params) }),
 };

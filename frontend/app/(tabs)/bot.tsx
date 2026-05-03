@@ -16,6 +16,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
+import { useRouter } from "expo-router";
 import * as Haptics from "expo-haptics";
 import { theme, fmtPrice, fmtUsd, symbolToBase } from "../../src/theme";
 import { api } from "../../src/lib/api";
@@ -23,6 +24,7 @@ import { api } from "../../src/lib/api";
 const ALL_PAIRS = ["BTCUSDT", "ETHUSDT", "SOLUSDT", "BNBUSDT", "XRPUSDT", "DOGEUSDT", "AVAXUSDT", "LINKUSDT"];
 
 export default function Bot() {
+  const router = useRouter();
   const [cfg, setCfg] = useState<any | null>(null);
   const [stats, setStats] = useState<any | null>(null);
   const [positions, setPositions] = useState<any[]>([]);
@@ -520,12 +522,41 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(255,69,96,0.08)", borderColor: "rgba(255,69,96,0.3)", borderWidth: 1,
   },
   resetText: { color: theme.colors.danger, fontWeight: "800", fontSize: 13 },
+  backtestCard: {
+    marginTop: 14, padding: 16,
+    flexDirection: "row", alignItems: "center", justifyContent: "space-between",
+    backgroundColor: theme.colors.surface, borderRadius: 18,
+    borderColor: theme.colors.border, borderWidth: 1,
+  },
+  backtestLeft: { flexDirection: "row", alignItems: "center", gap: 12 },
+  backtestIcon: {
+    width: 42, height: 42, borderRadius: 14, alignItems: "center", justifyContent: "center",
+    backgroundColor: "rgba(243,186,47,0.12)",
+    borderColor: "rgba(243,186,47,0.25)", borderWidth: 1,
+  },
+  backtestTitle: { color: "#fff", fontWeight: "800", fontSize: 14 },
+  backtestSub: { color: theme.colors.textSecondary, fontSize: 11, marginTop: 2 },
   scanBtn: {
     marginTop: 12, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8,
     paddingVertical: 14, borderRadius: 999,
     backgroundColor: theme.colors.primary,
   },
   scanText: { color: "#000", fontWeight: "900", fontSize: 14 },
+
+  backtestCard: {
+    marginTop: 14, padding: 16,
+    flexDirection: "row", alignItems: "center", justifyContent: "space-between",
+    backgroundColor: theme.colors.surface, borderRadius: 18,
+    borderColor: theme.colors.border, borderWidth: 1,
+  },
+  backtestLeft: { flexDirection: "row", alignItems: "center", gap: 12 },
+  backtestIcon: {
+    width: 42, height: 42, borderRadius: 14, alignItems: "center", justifyContent: "center",
+    backgroundColor: "rgba(243,186,47,0.12)",
+    borderColor: "rgba(243,186,47,0.25)", borderWidth: 1,
+  },
+  backtestTitle: { color: "#fff", fontWeight: "800", fontSize: 14 },
+  backtestSub: { color: theme.colors.textSecondary, fontSize: 11, marginTop: 2 },
   disclaimer: { color: theme.colors.textMuted, fontSize: 11, textAlign: "center", marginTop: 16, lineHeight: 16 },
 
   backdrop: { ...StyleSheet.absoluteFillObject, backgroundColor: "rgba(0,0,0,0.6)" },
