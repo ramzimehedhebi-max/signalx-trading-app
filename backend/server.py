@@ -608,7 +608,11 @@ async def remove_position(position_id: str, user=Depends(get_current_user)):
 
 
 # ============ TRADING BOT (PAPER) ============
-DEFAULT_BOT_PAIRS = ["BTCUSDT", "ETHUSDT", "SOLUSDT", "BNBUSDT", "XRPUSDT"]
+DEFAULT_BOT_PAIRS = [
+    "BTCUSDT", "ETHUSDT", "SOLUSDT", "BNBUSDT", "XRPUSDT",
+    "ADAUSDT", "DOGEUSDT", "AVAXUSDT", "LINKUSDT", "DOTUSDT",
+    "MATICUSDT", "LTCUSDT", "ATOMUSDT", "NEARUSDT", "ARBUSDT",
+]
 
 
 class BotConfig(BaseModel):
@@ -618,11 +622,15 @@ class BotConfig(BaseModel):
     strategy: str = "hybrid"  # indicators / hybrid
     capital_usdt: float = 1000.0
     paper_balance_usdt: float = 1000.0
-    max_positions: int = 3
-    position_size_pct: float = 20.0  # % of capital per trade
+    max_positions: int = 5
+    position_size_pct: float = 25.0  # % of capital per trade
     stop_loss_pct: float = 3.0
-    take_profit_pct: float = 5.0
+    take_profit_pct: float = 10.0
     interval_minutes: int = 5
+    trailing_enabled: bool = True
+    trailing_trigger_pct: float = 3.0  # activate trailing once profit reaches this
+    trailing_distance_pct: float = 2.0  # SL trails this far below highest price
+    compounding_enabled: bool = True  # capital grows with realized profits
     pairs: List[str] = Field(default_factory=lambda: DEFAULT_BOT_PAIRS.copy())
     last_run_at: Optional[datetime] = None
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
@@ -638,6 +646,10 @@ class BotConfigUpdate(BaseModel):
     interval_minutes: Optional[int] = None
     pairs: Optional[List[str]] = None
     strategy: Optional[str] = None
+    trailing_enabled: Optional[bool] = None
+    trailing_trigger_pct: Optional[float] = None
+    trailing_distance_pct: Optional[float] = None
+    compounding_enabled: Optional[bool] = None
 
 
 class BotPosition(BaseModel):
@@ -649,6 +661,9 @@ class BotPosition(BaseModel):
     entry_price: float
     stop_loss: float
     take_profit: float
+    original_stop_loss: float = 0.0  # initial SL for reference
+    highest_price: float = 0.0  # tracked since entry, for trailing
+    trail_active: bool = False  # true once trailing has been triggered
     entry_time: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     entry_reason: str = ""
     status: str = "open"  # open / closed
@@ -1131,21 +1146,27 @@ async def _close_position(user_id: str, position: dict, exit_price: float, reaso
     await db.bot_positions.update_one(
         {"id": position["id"]}, {"$set": {"status": "closed"}}
     )
-    # credit balance back
-    await db.bot_configs.update_one(
-        {"user_id": user_id},
-        {"$inc": {"paper_balance_usdt": exit_val}},
-    )
+    # credit balance back + compounding (capital grows with realized pnl)
+    cfg = await db.bot_configs.find_one({"user_id": user_id}, {"_id": 0}) or {}
+    update = {"$inc": {"paper_balance_usdt": exit_val}}
+    if cfg.get("compounding_enabled", True):
+        update["$inc"]["capital_usdt"] = pnl  # capital grows by realized pnl
+    await db.bot_configs.update_one({"user_id": user_id}, update)
     logger.info(f"BOT CLOSE {position['symbol']} pnl={pnl:.2f} ({pnl_pct:.2f}%) reason={reason}")
 
 
 async def _bot_check_positions(user_id: str):
-    """Check open positions for SL/TP exit."""
+    """Check open positions: trailing SL update + SL/TP exit."""
     open_pos = await db.bot_positions.find(
         {"user_id": user_id, "status": "open"}, {"_id": 0}
     ).to_list(50)
     if not open_pos:
         return
+    cfg = await db.bot_configs.find_one({"user_id": user_id}, {"_id": 0}) or {}
+    trailing_enabled = cfg.get("trailing_enabled", True)
+    trail_trigger = cfg.get("trailing_trigger_pct", 3.0)
+    trail_dist = cfg.get("trailing_distance_pct", 2.0)
+
     symbols = list({p["symbol"] for p in open_pos})
     try:
         async with httpx.AsyncClient(timeout=8.0) as cli:
@@ -1163,8 +1184,39 @@ async def _bot_check_positions(user_id: str):
         cp = prices.get(p["symbol"])
         if not cp:
             continue
+
+        # Update highest price + trailing SL
+        if trailing_enabled:
+            highest = max(p.get("highest_price", 0) or p["entry_price"], cp)
+            new_sl = p["stop_loss"]
+            trail_active = p.get("trail_active", False)
+            profit_pct = (cp - p["entry_price"]) / p["entry_price"] * 100
+
+            update_fields = {}
+            if highest > (p.get("highest_price") or 0):
+                update_fields["highest_price"] = highest
+
+            if profit_pct >= trail_trigger:
+                # candidate SL = highest * (1 - trail_dist%)
+                candidate_sl = highest * (1 - trail_dist / 100)
+                # only raise SL upward, never lower it
+                if candidate_sl > p["stop_loss"]:
+                    new_sl = candidate_sl
+                    update_fields["stop_loss"] = new_sl
+                    if not trail_active:
+                        update_fields["trail_active"] = True
+                        logger.info(
+                            f"BOT TRAIL ACTIVATED {p['symbol']} entry={p['entry_price']:.4f} "
+                            f"price={cp:.4f} new_SL={new_sl:.4f} (was {p['stop_loss']:.4f})"
+                        )
+            if update_fields:
+                await db.bot_positions.update_one({"id": p["id"]}, {"$set": update_fields})
+                p["stop_loss"] = update_fields.get("stop_loss", p["stop_loss"])
+
+        # Check exit
         if cp <= p["stop_loss"]:
-            await _close_position(user_id, p, cp, "stop_loss")
+            reason = "trailing_stop" if p.get("trail_active") else "stop_loss"
+            await _close_position(user_id, p, cp, reason)
         elif cp >= p["take_profit"]:
             await _close_position(user_id, p, cp, "take_profit")
 
@@ -1255,6 +1307,8 @@ async def _bot_evaluate_entries(user_id: str, cfg: dict):
             entry_price=entry,
             stop_loss=sl,
             take_profit=tp,
+            original_stop_loss=sl,
+            highest_price=entry,
             entry_reason=f"{c['signal']['reason']} | IA: {validation_reason}".strip(" |"),
         )
         await db.bot_positions.insert_one(pos.dict())

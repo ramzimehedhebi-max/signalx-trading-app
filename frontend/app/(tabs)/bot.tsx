@@ -207,6 +207,20 @@ export default function Bot() {
             Indicateurs RSI + EMA détectent les opportunités, Claude Sonnet 4.5 valide les trades incertains.
             Stop-loss {cfg.stop_loss_pct}% · Take-profit {cfg.take_profit_pct}% · {cfg.position_size_pct}% capital/trade.
           </Text>
+          <View style={styles.boostsRow}>
+            {cfg.trailing_enabled && (
+              <View style={styles.boost}>
+                <Ionicons name="shield-checkmark" size={11} color={theme.colors.buy} />
+                <Text style={styles.boostText}>Trailing SL +{cfg.trailing_trigger_pct}%</Text>
+              </View>
+            )}
+            {cfg.compounding_enabled && (
+              <View style={styles.boost}>
+                <Ionicons name="trending-up" size={11} color={theme.colors.buy} />
+                <Text style={styles.boostText}>Compounding</Text>
+              </View>
+            )}
+          </View>
         </View>
 
         {/* Open positions */}
@@ -229,7 +243,15 @@ export default function Bot() {
                     <Text style={styles.iconText}>{symbolToBase(p.symbol).slice(0, 2)}</Text>
                   </View>
                   <View style={{ flex: 1 }}>
-                    <Text style={styles.posSym}>{symbolToBase(p.symbol)}</Text>
+                    <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+                      <Text style={styles.posSym}>{symbolToBase(p.symbol)}</Text>
+                      {p.trail_active && (
+                        <View style={styles.trailPill}>
+                          <Ionicons name="shield-checkmark" size={9} color={theme.colors.buy} />
+                          <Text style={styles.trailPillText}>TRAIL</Text>
+                        </View>
+                      )}
+                    </View>
                     <Text style={styles.posPair}>{p.symbol} · {p.quantity.toFixed(6)}</Text>
                   </View>
                   <View style={[styles.pnlMini, { backgroundColor: p.pnl >= 0 ? "rgba(0,227,150,0.15)" : "rgba(255,69,96,0.15)" }]}>
@@ -471,6 +493,21 @@ const styles = StyleSheet.create({
   stratHead: { flexDirection: "row", alignItems: "center", gap: 6 },
   stratTitle: { color: theme.colors.primary, fontWeight: "800", fontSize: 12, letterSpacing: 0.8 },
   stratText: { color: theme.colors.textSecondary, fontSize: 12, lineHeight: 18, marginTop: 6 },
+  boostsRow: { flexDirection: "row", gap: 6, marginTop: 10, flexWrap: "wrap" },
+  boost: {
+    flexDirection: "row", alignItems: "center", gap: 4,
+    paddingHorizontal: 8, paddingVertical: 3, borderRadius: 999,
+    backgroundColor: "rgba(0,227,150,0.10)",
+    borderColor: "rgba(0,227,150,0.3)", borderWidth: 1,
+  },
+  boostText: { color: theme.colors.buy, fontSize: 10, fontWeight: "800", letterSpacing: 0.5 },
+  trailPill: {
+    flexDirection: "row", alignItems: "center", gap: 3,
+    paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6,
+    backgroundColor: "rgba(0,227,150,0.15)",
+    borderColor: "rgba(0,227,150,0.4)", borderWidth: 1,
+  },
+  trailPillText: { color: theme.colors.buy, fontSize: 9, fontWeight: "900", letterSpacing: 0.5 },
 
   sectionHead: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginTop: 24, marginBottom: 12 },
   sectionTitle: { color: "#fff", fontSize: 17, fontWeight: "900" },
