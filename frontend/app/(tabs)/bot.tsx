@@ -220,6 +220,12 @@ export default function Bot() {
                 <Text style={styles.boostText}>Compounding</Text>
               </View>
             )}
+            {cfg.ai_predictions_enabled && (
+              <View style={styles.boost}>
+                <Ionicons name="telescope" size={11} color={theme.colors.buy} />
+                <Text style={styles.boostText}>IA Prédictive</Text>
+              </View>
+            )}
           </View>
         </View>
 

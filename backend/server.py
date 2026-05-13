@@ -607,6 +607,97 @@ async def remove_position(position_id: str, user=Depends(get_current_user)):
     return {"ok": True}
 
 
+async def _get_cached_prediction(symbol: str, horizon: str = "24h", max_age_min: int = 60):
+    """Fetch a cached prediction (from db.predictions). Returns None if too old/missing."""
+    cached = await db.predictions.find_one({"key": f"predict:{symbol}:{horizon}"}, {"_id": 0, "key": 0})
+    if not cached:
+        return None
+    gen = cached.get("generated_at")
+    if not gen:
+        return None
+    if gen.tzinfo is None:
+        gen = gen.replace(tzinfo=timezone.utc)
+    age_min = (datetime.now(timezone.utc) - gen).total_seconds() / 60
+    if age_min > max_age_min:
+        return None
+    return cached
+
+
+async def _fetch_or_compute_prediction(symbol: str, horizon: str = "24h"):
+    """Get a prediction: from cache if fresh, else compute new one. Returns dict or None on error."""
+    cached = await _get_cached_prediction(symbol, horizon, max_age_min=60)
+    if cached:
+        return cached
+    try:
+        # Call ai_predict logic directly without auth context (used by bot engine).
+        # We need a minimal user dict for the dependency. Bypass by replicating core logic:
+        interval_map = {"24h": "1h", "3d": "4h", "7d": "1d"}
+        interval = interval_map.get(horizon, "1h")
+        async with httpx.AsyncClient(timeout=12.0) as cli:
+            r = await cli.get(
+                f"{BINANCE_BASE}/api/v3/klines",
+                params={"symbol": symbol, "interval": interval, "limit": 100},
+            )
+            r.raise_for_status()
+            data = r.json()
+        closes = [float(k[4]) for k in data]
+        highs = [float(k[2]) for k in data]
+        lows = [float(k[3]) for k in data]
+        vols = [float(k[5]) for k in data]
+        last = closes[-1]
+        rsi = compute_rsi(closes, 14) or 50
+        ema12 = compute_ema(closes, 12)
+        ema26 = compute_ema(closes, 26)
+        change_24h = (closes[-1] - closes[-24]) / closes[-24] * 100 if len(closes) >= 24 else 0
+        rets = [(closes[i] - closes[i - 1]) / closes[i - 1] for i in range(max(1, len(closes) - 24), len(closes))]
+        avg = sum(rets) / len(rets) if rets else 0
+        vol_std = (sum((x - avg) ** 2 for x in rets) / len(rets)) ** 0.5 if rets else 0
+        volatility_pct = vol_std * 100
+
+        system_msg = (
+            "Tu es un analyste quantitatif crypto. Réponds STRICTEMENT en JSON:\n"
+            '{"direction":"HAUSSE|STABLE|BAISSE","confidence":int,"target_low":float,'
+            '"target_median":float,"target_high":float,"action":"BUY|WAIT|SELL",'
+            '"key_factors":["..."],"reasoning":"..."}'
+        )
+        user_text = (
+            f"{symbol} {horizon}\nPrix:{last:.6f} RSI:{rsi:.1f} EMA12:{ema12:.6f} EMA26:{ema26:.6f}\n"
+            f"24h:{change_24h:+.2f}% Vol:{volatility_pct:.2f}%\n"
+            f"Prédis le prix dans {horizon}."
+        )
+        chat = LlmChat(
+            api_key=EMERGENT_LLM_KEY,
+            session_id=f"bot-pred-{symbol}-{int(datetime.now(timezone.utc).timestamp())}",
+            system_message=system_msg,
+        ).with_model("anthropic", "claude-sonnet-4-5-20250929")
+        resp = await chat.send_message(UserMessage(text=user_text))
+        cleaned = resp.strip().strip("`").lstrip("json").strip()
+        parsed = json.loads(cleaned)
+        result = {
+            "symbol": symbol,
+            "horizon": horizon,
+            "current_price": last,
+            "direction": str(parsed.get("direction", "STABLE")).upper(),
+            "confidence": int(parsed.get("confidence", 50)),
+            "target_low": float(parsed.get("target_low", last * 0.97)),
+            "target_median": float(parsed.get("target_median", last)),
+            "target_high": float(parsed.get("target_high", last * 1.03)),
+            "action": str(parsed.get("action", "WAIT")).upper(),
+            "key_factors": parsed.get("key_factors", []),
+            "reasoning": str(parsed.get("reasoning", "")),
+            "generated_at": datetime.now(timezone.utc),
+        }
+        await db.predictions.update_one(
+            {"key": f"predict:{symbol}:{horizon}"},
+            {"$set": {**result, "key": f"predict:{symbol}:{horizon}"}},
+            upsert=True,
+        )
+        return result
+    except Exception as e:
+        logger.warning(f"Prediction error {symbol}: {e}")
+        return None
+
+
 # ============ TRADING BOT (PAPER) ============
 DEFAULT_BOT_PAIRS = [
     "BTCUSDT", "ETHUSDT", "SOLUSDT", "BNBUSDT", "XRPUSDT",
@@ -631,6 +722,8 @@ class BotConfig(BaseModel):
     trailing_trigger_pct: float = 3.0  # activate trailing once profit reaches this
     trailing_distance_pct: float = 2.0  # SL trails this far below highest price
     compounding_enabled: bool = True  # capital grows with realized profits
+    ai_predictions_enabled: bool = True  # use AI predictions for entries + exits
+    ai_exit_confidence: int = 65  # min confidence for AI to trigger an early exit
     pairs: List[str] = Field(default_factory=lambda: DEFAULT_BOT_PAIRS.copy())
     last_run_at: Optional[datetime] = None
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
@@ -650,6 +743,8 @@ class BotConfigUpdate(BaseModel):
     trailing_trigger_pct: Optional[float] = None
     trailing_distance_pct: Optional[float] = None
     compounding_enabled: Optional[bool] = None
+    ai_predictions_enabled: Optional[bool] = None
+    ai_exit_confidence: Optional[int] = None
 
 
 class BotPosition(BaseModel):
@@ -666,6 +761,8 @@ class BotPosition(BaseModel):
     trail_active: bool = False  # true once trailing has been triggered
     entry_time: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     entry_reason: str = ""
+    ai_target_median: Optional[float] = None  # AI-predicted target if available
+    last_ai_check: Optional[datetime] = None  # last prediction sanity-check
     status: str = "open"  # open / closed
 
 
@@ -1217,8 +1314,35 @@ async def _bot_check_positions(user_id: str):
         if cp <= p["stop_loss"]:
             reason = "trailing_stop" if p.get("trail_active") else "stop_loss"
             await _close_position(user_id, p, cp, reason)
+            continue
         elif cp >= p["take_profit"]:
             await _close_position(user_id, p, cp, "take_profit")
+            continue
+
+        # AI-driven early exit: check prediction every 30 min per position
+        if cfg.get("ai_predictions_enabled", True):
+            last_ai = p.get("last_ai_check")
+            should_check = True
+            if last_ai:
+                if last_ai.tzinfo is None:
+                    last_ai = last_ai.replace(tzinfo=timezone.utc)
+                if (datetime.now(timezone.utc) - last_ai).total_seconds() < 30 * 60:
+                    should_check = False
+            if should_check:
+                pred = await _fetch_or_compute_prediction(p["symbol"], "24h")
+                await db.bot_positions.update_one(
+                    {"id": p["id"]}, {"$set": {"last_ai_check": datetime.now(timezone.utc)}}
+                )
+                if pred:
+                    profit_pct = (cp - p["entry_price"]) / p["entry_price"] * 100
+                    threshold = cfg.get("ai_exit_confidence", 65)
+                    if pred["direction"] == "BAISSE" and pred["confidence"] >= threshold and profit_pct > 0:
+                        # Lock the profit before AI-predicted drop
+                        logger.info(
+                            f"BOT AI_EXIT {p['symbol']} prediction BAISSE conf={pred['confidence']}% "
+                            f"profit={profit_pct:.2f}% — closing to lock gains"
+                        )
+                        await _close_position(user_id, p, cp, "ai_exit_baisse")
 
 
 async def _bot_evaluate_entries(user_id: str, cfg: dict):
@@ -1291,6 +1415,26 @@ async def _bot_evaluate_entries(user_id: str, cfg: dict):
             logger.info(f"BOT REJECTED {c['symbol']} by Claude: {validation_reason}")
             continue
 
+        # AI-prediction guard (NEW): require HAUSSE direction to proceed
+        ai_target = None
+        ai_reason_extra = ""
+        if cfg_now.get("ai_predictions_enabled", True):
+            pred = await _fetch_or_compute_prediction(c["symbol"], "24h")
+            if pred:
+                if pred["direction"] == "BAISSE":
+                    logger.info(
+                        f"BOT AI_REJECTED {c['symbol']} prediction BAISSE conf={pred['confidence']}%"
+                    )
+                    continue
+                if pred["direction"] == "STABLE" and pred["confidence"] >= 70:
+                    # Strong stable prediction = skip (no upside)
+                    logger.info(f"BOT AI_REJECTED {c['symbol']} prediction STABLE high-conf")
+                    continue
+                # HAUSSE or weak STABLE → proceed and use AI target
+                if pred["direction"] == "HAUSSE":
+                    ai_target = pred.get("target_median")
+                    ai_reason_extra = f" | 🔮 IA prédit HAUSSE conf {pred['confidence']}%"
+
         cfg_now = await db.bot_configs.find_one({"user_id": user_id}, {"_id": 0})
         balance = cfg_now.get("paper_balance_usdt", 0)
         if balance < trade_size:
@@ -1298,7 +1442,14 @@ async def _bot_evaluate_entries(user_id: str, cfg: dict):
         entry = c["last_price"]
         qty = trade_size / entry
         sl = entry * (1 - cfg_now["stop_loss_pct"] / 100)
-        tp = entry * (1 + cfg_now["take_profit_pct"] / 100)
+        fixed_tp = entry * (1 + cfg_now["take_profit_pct"] / 100)
+        # Dynamic TP: if AI target is higher than fixed TP, use AI target (let AI prediction guide profit-taking)
+        if ai_target and ai_target > fixed_tp:
+            tp = ai_target
+            tp_source = f"IA: ${ai_target:.4f}"
+        else:
+            tp = fixed_tp
+            tp_source = "fixe"
 
         pos = BotPosition(
             user_id=user_id,
@@ -1309,14 +1460,15 @@ async def _bot_evaluate_entries(user_id: str, cfg: dict):
             take_profit=tp,
             original_stop_loss=sl,
             highest_price=entry,
-            entry_reason=f"{c['signal']['reason']} | IA: {validation_reason}".strip(" |"),
+            ai_target_median=ai_target,
+            entry_reason=f"{c['signal']['reason']} | IA: {validation_reason}{ai_reason_extra} | TP {tp_source}".strip(" |"),
         )
         await db.bot_positions.insert_one(pos.dict())
         await db.bot_configs.update_one(
             {"user_id": user_id},
             {"$inc": {"paper_balance_usdt": -trade_size}},
         )
-        logger.info(f"BOT OPEN {c['symbol']} @ {entry} qty={qty:.6f} SL={sl} TP={tp} strength={c['signal']['strength']}")
+        logger.info(f"BOT OPEN {c['symbol']} @ {entry} qty={qty:.6f} SL={sl:.4f} TP={tp:.4f} ({tp_source}) strength={c['signal']['strength']}")
 
 
 async def _bot_loop():
