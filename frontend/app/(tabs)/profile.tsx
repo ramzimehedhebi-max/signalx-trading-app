@@ -3,13 +3,16 @@ import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert, Platform }
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter, useFocusEffect } from "expo-router";
+import { useTranslation } from "react-i18next";
 import { theme } from "../../src/theme";
 import { useAuth } from "../../src/contexts/AuthContext";
 import { api } from "../../src/lib/api";
+import { LanguagePickerRow } from "../../src/components/LanguagePicker";
 
 export default function Profile() {
   const { user, logout } = useAuth();
   const router = useRouter();
+  const { t } = useTranslation();
   const [binance, setBinance] = useState<any>(null);
   const [premium, setPremium] = useState<any>(null);
 
@@ -54,15 +57,14 @@ export default function Profile() {
 
   const items: { icon: any; label: string; sub: string; onPress?: () => void }[] = [
     { icon: "shield-checkmark", label: "Sécurité", sub: "Mot de passe & 2FA (bientôt)" },
-    { icon: "notifications", label: "Notifications", sub: "Alertes prix push (bientôt)" },
-    { icon: "language", label: "Langue", sub: "Français" },
-    { icon: "help-circle", label: "Aide", sub: "FAQ et support" },
+    { icon: "notifications", label: t("profile.notifications"), sub: "Alertes prix push (bientôt)" },
+    { icon: "help-circle", label: t("profile.support"), sub: "FAQ et support" },
   ];
 
   return (
     <SafeAreaView style={styles.safe} edges={["top"]} testID="profile-screen">
       <ScrollView contentContainerStyle={styles.scroll}>
-        <Text style={styles.title}>Profil</Text>
+        <Text style={styles.title}>{t("profile.title")}</Text>
 
         <View style={styles.userCard}>
           <View style={styles.avatar}>
@@ -104,12 +106,10 @@ export default function Profile() {
           </View>
           <View style={{ flex: 1 }}>
             <Text style={styles.binanceTitle}>
-              {premium?.is_premium ? "Tu es Premium 👑" : "Passer à Premium"}
+              {premium?.is_premium ? t("profile.premium_active") : t("profile.premium_upgrade")}
             </Text>
             <Text style={styles.binanceSub}>
-              {premium?.is_premium
-                ? "Gérer ton abonnement"
-                : "Paires illimitées · Trading Live · 9,99€/mois"}
+              {premium?.is_premium ? t("profile.premium_manage") : t("profile.premium_pitch")}
             </Text>
           </View>
           <Ionicons name="chevron-forward" color={theme.colors.textMuted} size={18} />
@@ -133,12 +133,10 @@ export default function Profile() {
           </View>
           <View style={{ flex: 1 }}>
             <Text style={styles.binanceTitle}>
-              {binance?.connected ? "Compte Binance connecté" : "Connecter mon Binance"}
+              {binance?.connected ? t("profile.binance_connected") : t("profile.binance_connect")}
             </Text>
             <Text style={styles.binanceSub}>
-              {binance?.connected
-                ? "Trading réel disponible · Tap pour gérer"
-                : "Trader en réel avec tes propres fonds"}
+              {binance?.connected ? t("profile.binance_manage") : t("profile.binance_connect_desc")}
             </Text>
           </View>
           {binance?.connected ? (
@@ -147,6 +145,9 @@ export default function Profile() {
             <Ionicons name="chevron-forward" color={theme.colors.textMuted} size={18} />
           )}
         </TouchableOpacity>
+
+        {/* Language picker */}
+        <LanguagePickerRow />
 
         <View style={styles.list}>
           {items.map((it, idx) => (

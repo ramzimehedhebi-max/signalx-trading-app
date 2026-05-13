@@ -8,6 +8,7 @@ import * as Font from "expo-font";
 import { Ionicons } from "@expo/vector-icons";
 import { AuthProvider } from "../src/contexts/AuthContext";
 import { theme } from "../src/theme";
+import { initI18n } from "../src/i18n";
 
 export default function RootLayout() {
   const [fontsReady, setFontsReady] = useState(false);
@@ -16,13 +17,14 @@ export default function RootLayout() {
     let mounted = true;
     (async () => {
       try {
+        // Load i18n BEFORE rendering any screen so translations work everywhere.
+        await initI18n();
         await Font.loadAsync({
           // Force-preload Ionicons font (Expo Go SDK 54 sometimes ships an empty cached copy)
           ...(Ionicons.font as Record<string, any>),
         });
       } catch (e) {
-        // If preload fails, continue anyway — icons will fall back to question marks but app boots.
-        console.warn("[fonts] preload failed:", e);
+        console.warn("[boot] preload failed:", e);
       } finally {
         if (mounted) setFontsReady(true);
       }
