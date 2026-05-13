@@ -228,11 +228,27 @@ class ResetPasswordReq(BaseModel):
 async def forgot_password(req: ForgotPasswordReq):
     """Generate a 6-digit reset code, store hashed (30min TTL), send by email via Resend.
     Always returns the same response to avoid leaking which emails exist.
+    Rate-limited: max 1 request per 60s per email (prevents email spam/abuse).
     """
     user = await db.users.find_one({"email": req.email.lower()})
     if not user:
-        # Don't reveal whether the email exists
         return {"sent": True, "email_sent": False}
+    # Rate-limit: refuse if a code was generated less than 60s ago
+    recent = await db.password_resets.find_one(
+        {"user_id": user["id"], "created_at": {"$gte": datetime.now(timezone.utc) - timedelta(seconds=60)}},
+        sort=[("created_at", -1)],
+    )
+    if recent:
+        rcreated = recent["created_at"]
+        # Normalise naive datetime → UTC-aware (Mongo strips tzinfo)
+        if rcreated.tzinfo is None:
+            rcreated = rcreated.replace(tzinfo=timezone.utc)
+        secs_ago = int((datetime.now(timezone.utc) - rcreated).total_seconds())
+        remaining = max(1, 60 - secs_ago)
+        raise HTTPException(
+            status_code=429,
+            detail=f"Patiente {remaining} secondes avant de redemander un nouveau code.",
+        )
     import random, string
     code = "".join(random.choices(string.digits, k=6))
     code_hash = hash_password(code)
@@ -246,7 +262,6 @@ async def forgot_password(req: ForgotPasswordReq):
         "used": False,
     })
     logger.info(f"[PASSWORD-RESET] code generated for user={user['email']}")
-    # Send via Resend (non-blocking — if it fails, we still log the code as fallback)
     from email_service import send_reset_code_email, is_configured as email_configured
     email_sent = False
     if email_configured():
@@ -255,7 +270,6 @@ async def forgot_password(req: ForgotPasswordReq):
         except Exception as e:
             logger.exception(f"[PASSWORD-RESET] email send error: {e}")
     if not email_sent:
-        # Fallback: log the code to backend so admin can recover (dev mode)
         logger.warning(f"[PASSWORD-RESET] FALLBACK code={code} for {user['email']} (email not sent)")
     return {"sent": True, "email_sent": email_sent}
 
