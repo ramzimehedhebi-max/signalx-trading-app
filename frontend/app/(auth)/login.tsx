@@ -85,6 +85,14 @@ export default function Login() {
           {err && <Text style={styles.error} testID="login-error">{err}</Text>}
 
           <TouchableOpacity
+            onPress={() => router.push("/(auth)/forgot-password")}
+            style={styles.forgotBtn}
+            hitSlop={10}
+          >
+            <Text style={styles.forgotText}>Mot de passe oublié ?</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
             style={[styles.primary, loading && { opacity: 0.7 }]}
             disabled={loading}
             onPress={onSubmit}
@@ -139,4 +147,6 @@ const styles = StyleSheet.create({
   footer: { flexDirection: "row", justifyContent: "center", marginTop: 24 },
   footerText: { color: theme.colors.textSecondary, fontSize: 14 },
   link: { color: theme.colors.primary, fontWeight: "800", fontSize: 14 },
+  forgotBtn: { alignSelf: "flex-end", marginTop: 4, marginBottom: 4, padding: 8 },
+  forgotText: { color: theme.colors.primary, fontSize: 13, fontWeight: "700" },
 });

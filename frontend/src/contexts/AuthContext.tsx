@@ -11,6 +11,7 @@ type AuthCtx = {
   register: (email: string, password: string, name: string) => Promise<void>;
   logout: () => Promise<void>;
   refresh: () => Promise<void>;
+  applyTokenAndUser: (token: string, user: User) => Promise<void>;
 };
 
 const Ctx = createContext<AuthCtx | null>(null);
@@ -59,8 +60,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUser(null);
   };
 
+  const applyTokenAndUser = async (token: string, u: User) => {
+    await setToken(token);
+    setUser(u);
+  };
+
   return (
-    <Ctx.Provider value={{ user, loading, login, register, logout, refresh }}>
+    <Ctx.Provider value={{ user, loading, login, register, logout, refresh, applyTokenAndUser }}>
       {children}
     </Ctx.Provider>
   );

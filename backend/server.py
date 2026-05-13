@@ -214,6 +214,75 @@ async def me(user=Depends(get_current_user)):
     return UserPublic(**user)
 
 
+class ForgotPasswordReq(BaseModel):
+    email: EmailStr
+
+
+class ResetPasswordReq(BaseModel):
+    email: EmailStr
+    code: str
+    new_password: str
+
+
+@api_router.post("/auth/forgot-password")
+async def forgot_password(req: ForgotPasswordReq):
+    """Generate a 6-digit reset code. Stored hashed with 30min TTL.
+    NOTE: For MVP, the code is returned in the response. In production, we'd
+    only send it by email (SendGrid/Mailgun integration TODO).
+    """
+    user = await db.users.find_one({"email": req.email.lower()})
+    if not user:
+        # Don't reveal whether the email exists (timing-safe response)
+        return {"sent": True, "dev_code": None}
+    import random, string
+    code = "".join(random.choices(string.digits, k=6))
+    code_hash = hash_password(code)
+    await db.password_resets.delete_many({"user_id": user["id"]})
+    await db.password_resets.insert_one({
+        "user_id": user["id"],
+        "email": user["email"],
+        "code_hash": code_hash,
+        "created_at": datetime.now(timezone.utc),
+        "expires_at": datetime.now(timezone.utc) + timedelta(minutes=30),
+        "used": False,
+    })
+    logger.info(f"[PASSWORD-RESET] code generated for user={user['email']} code={code}")
+    # MVP: return code in response — UI displays it.
+    return {"sent": True, "dev_code": code}
+
+
+@api_router.post("/auth/reset-password", response_model=AuthResp)
+async def reset_password(req: ResetPasswordReq):
+    if len(req.new_password) < 6:
+        raise HTTPException(status_code=400, detail="Mot de passe trop court (min 6 caractères)")
+    user = await db.users.find_one({"email": req.email.lower()})
+    if not user:
+        raise HTTPException(status_code=400, detail="Code invalide ou expiré")
+    pr = await db.password_resets.find_one({
+        "user_id": user["id"],
+        "used": False,
+        "expires_at": {"$gte": datetime.now(timezone.utc)},
+    }, sort=[("created_at", -1)])
+    if not pr:
+        raise HTTPException(status_code=400, detail="Code invalide ou expiré")
+    if not verify_password(req.code, pr["code_hash"]):
+        raise HTTPException(status_code=400, detail="Code invalide ou expiré")
+    # All good — change password and mark code used
+    await db.users.update_one(
+        {"id": user["id"]},
+        {"$set": {"password": hash_password(req.new_password)}},
+    )
+    await db.password_resets.update_one(
+        {"_id": pr["_id"]},
+        {"$set": {"used": True, "used_at": datetime.now(timezone.utc)}},
+    )
+    token = create_token(user["id"])
+    return AuthResp(
+        token=token,
+        user=UserPublic(id=user["id"], email=user["email"], name=user["name"], created_at=user["created_at"]),
+    )
+
+
 # ============ MARKET ROUTES (Binance public) ============
 DEFAULT_SYMBOLS = [
     "BTCUSDT", "ETHUSDT", "BNBUSDT", "SOLUSDT", "XRPUSDT",

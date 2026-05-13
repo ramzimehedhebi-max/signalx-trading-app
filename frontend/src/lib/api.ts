@@ -154,4 +154,16 @@ export const api = {
       body: JSON.stringify({ success_url, cancel_url }),
     }),
   premiumCancel: () => request<any>("/premium/cancel", { method: "POST" }),
+
+  // Auth — password reset
+  forgotPassword: (email: string) =>
+    request<any>("/auth/forgot-password", {
+      method: "POST",
+      body: JSON.stringify({ email }),
+    }),
+  resetPassword: (email: string, code: string, new_password: string) =>
+    request<any>("/auth/reset-password", {
+      method: "POST",
+      body: JSON.stringify({ email, code, new_password }),
+    }),
 };
