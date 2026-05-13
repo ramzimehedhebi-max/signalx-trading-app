@@ -82,6 +82,76 @@ export default function Bot() {
     }
   };
 
+  const confirmLive = async (turnOn: boolean) => {
+    if (!turnOn) {
+      // Quick disable
+      try {
+        const updated = await api.botUpdateConfig({ live_mode: false });
+        setCfg(updated);
+      } catch (e: any) {
+        Alert.alert("Erreur", e.message);
+      }
+      return;
+    }
+    // Check Binance connection first
+    let connected = false;
+    try {
+      const s = await api.binanceStatus();
+      connected = !!s.connected;
+    } catch {}
+    if (!connected) {
+      Alert.alert(
+        "Binance non connecté",
+        "Tu dois d'abord connecter ton compte Binance avant d'activer le mode Live.",
+        [
+          { text: "Plus tard", style: "cancel" },
+          { text: "Connecter maintenant", onPress: () => router.push("/binance-connect") },
+        ]
+      );
+      return;
+    }
+    const doEnable = async () => {
+      try {
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+        const updated = await api.botUpdateConfig({ live_mode: true });
+        setCfg(updated);
+        Alert.alert(
+          "⚡ Mode LIVE activé",
+          `Le bot va maintenant exécuter de VRAIS ordres sur Binance.\n\nLimite par trade : $${updated.live_max_position_usdt || 50}.`
+        );
+      } catch (e: any) {
+        Alert.alert("Erreur", e.message || "Impossible d'activer le mode Live");
+      }
+    };
+    if (Platform.OS === "web") {
+      const ok =
+        typeof window !== "undefined" &&
+        window.confirm(
+          "⚠️ ATTENTION : Mode LIVE\n\nLe bot va passer en trading RÉEL avec de l'argent VRAI sur Binance.\n\nConfirmer l'activation ?"
+        );
+      if (ok) doEnable();
+      return;
+    }
+    Alert.alert(
+      "⚠️ Activer le mode LIVE ?",
+      "Le bot va passer en trading RÉEL avec de l'argent VRAI sur Binance. Tu peux désactiver à tout moment.",
+      [
+        { text: "Annuler", style: "cancel" },
+        { text: "Activer Live", style: "destructive", onPress: doEnable },
+      ]
+    );
+  };
+
+  const toggleKillSwitch = async (val: boolean) => {
+    try {
+      const updated = await api.botUpdateConfig({ live_killswitch: val });
+      setCfg(updated);
+      if (val) Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+    } catch (e: any) {
+      Alert.alert("Erreur", e.message);
+    }
+  };
+
   const doReset = async () => {
     try {
       await api.botReset();
@@ -194,6 +264,57 @@ export default function Bot() {
               </Text>
             </View>
           </View>
+        </View>
+
+        {/* Mode Paper / Live */}
+        <View style={[styles.modeCard, cfg.live_mode && styles.modeCardLive]}>
+          <View style={styles.modeHead}>
+            <View style={{ flex: 1 }}>
+              <View style={styles.modeBadgeRow}>
+                <View style={[styles.modeBadge, cfg.live_mode ? styles.modeBadgeLive : styles.modeBadgePaper]}>
+                  <Ionicons
+                    name={cfg.live_mode ? "flash" : "document-text-outline"}
+                    size={12}
+                    color={cfg.live_mode ? theme.colors.danger : theme.colors.primary}
+                  />
+                  <Text style={[styles.modeBadgeText, { color: cfg.live_mode ? theme.colors.danger : theme.colors.primary }]}>
+                    {cfg.live_mode ? "MODE LIVE — ARGENT RÉEL" : "MODE PAPER — SIMULATION"}
+                  </Text>
+                </View>
+              </View>
+              <Text style={styles.modeDesc}>
+                {cfg.live_mode
+                  ? `Le bot exécute de vrais ordres sur Binance. Limite: $${cfg.live_max_position_usdt || 50}/trade.`
+                  : "Aucun ordre réel. Les performances utilisent un capital fictif."}
+              </Text>
+            </View>
+            <Switch
+              value={!!cfg.live_mode}
+              onValueChange={confirmLive}
+              trackColor={{ false: theme.colors.surfaceAlt, true: theme.colors.danger }}
+              thumbColor={cfg.live_mode ? "#fff" : "#888"}
+            />
+          </View>
+
+          {cfg.live_mode && (
+            <View style={styles.killRow}>
+              <Ionicons name="warning" size={16} color={cfg.live_killswitch ? theme.colors.danger : theme.colors.textSecondary} />
+              <View style={{ flex: 1 }}>
+                <Text style={styles.killTitle}>Kill-switch (pause des achats)</Text>
+                <Text style={styles.killSub}>
+                  {cfg.live_killswitch
+                    ? "Aucun nouvel achat. Le bot ne fait QUE clôturer les positions ouvertes."
+                    : "Désactive instantanément les nouveaux achats si besoin."}
+                </Text>
+              </View>
+              <Switch
+                value={!!cfg.live_killswitch}
+                onValueChange={toggleKillSwitch}
+                trackColor={{ false: theme.colors.surfaceAlt, true: theme.colors.danger }}
+                thumbColor={cfg.live_killswitch ? "#fff" : "#888"}
+              />
+            </View>
+          )}
         </View>
 
         {/* Strategy summary */}
@@ -630,4 +751,50 @@ const styles = StyleSheet.create({
 
   cta: { marginTop: 22, backgroundColor: theme.colors.primary, paddingVertical: 16, borderRadius: 999, alignItems: "center" },
   ctaText: { color: "#000", fontWeight: "900", fontSize: 15 },
+
+  modeCard: {
+    marginTop: 14,
+    backgroundColor: theme.colors.surface,
+    borderRadius: 16,
+    padding: 14,
+    borderColor: theme.colors.border,
+    borderWidth: 1,
+  },
+  modeCardLive: {
+    backgroundColor: "rgba(255,69,96,0.05)",
+    borderColor: "rgba(255,69,96,0.35)",
+  },
+  modeHead: { flexDirection: "row", alignItems: "center", gap: 14 },
+  modeBadgeRow: { flexDirection: "row" },
+  modeBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 999,
+    borderWidth: 1,
+    alignSelf: "flex-start",
+  },
+  modeBadgePaper: {
+    backgroundColor: "rgba(243,186,47,0.1)",
+    borderColor: "rgba(243,186,47,0.35)",
+  },
+  modeBadgeLive: {
+    backgroundColor: "rgba(255,69,96,0.12)",
+    borderColor: "rgba(255,69,96,0.45)",
+  },
+  modeBadgeText: { fontSize: 11, fontWeight: "800", letterSpacing: 0.3 },
+  modeDesc: { color: theme.colors.textSecondary, fontSize: 12, marginTop: 6, lineHeight: 17 },
+  killRow: {
+    marginTop: 12,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    paddingTop: 12,
+    borderTopColor: theme.colors.border,
+    borderTopWidth: 1,
+  },
+  killTitle: { color: "#fff", fontWeight: "700", fontSize: 13 },
+  killSub: { color: theme.colors.textSecondary, fontSize: 11, marginTop: 2 },
 });

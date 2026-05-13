@@ -123,4 +123,23 @@ export const api = {
     request<any>("/ai/predict", { method: "POST", body: JSON.stringify({ symbol, horizon }) }),
   predictTop: (horizon = "24h") =>
     request<any[]>(`/ai/predict/top?horizon=${horizon}`),
+
+  // Notifications
+  saveExpoPushToken: (token: string) =>
+    request<any>("/user/push-token", { method: "POST", body: JSON.stringify({ token }) }),
+  notifications: () => request<any>("/notifications"),
+  unreadCount: () => request<any>("/notifications/unread-count"),
+  markRead: (id: string) => request<any>(`/notifications/${id}/read`, { method: "POST" }),
+  markAllRead: () => request<any>("/notifications/read-all", { method: "POST" }),
+
+  // Binance Live
+  binanceStatus: () => request<any>("/binance/status"),
+  binanceConnect: (api_key: string, api_secret: string) =>
+    request<any>("/binance/connect", {
+      method: "POST",
+      body: JSON.stringify({ api_key, api_secret }),
+    }),
+  binanceDisconnect: () =>
+    request<any>("/binance/disconnect", { method: "DELETE" }),
+  binanceAccount: () => request<any>("/binance/account"),
 };

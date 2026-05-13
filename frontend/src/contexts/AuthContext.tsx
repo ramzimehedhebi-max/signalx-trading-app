@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useEffect, useState, useCallback } from "react";
 import { api, setToken, clearToken } from "../lib/api";
+import { registerForPushNotifications } from "../lib/notifications";
 
 type User = { id: string; email: string; name: string; created_at: string };
 
@@ -33,6 +34,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setLoading(false);
     })();
   }, [refresh]);
+
+  // Register for push notifications once user is logged in
+  useEffect(() => {
+    if (user) {
+      registerForPushNotifications().catch(() => {});
+    }
+  }, [user]);
 
   const login = async (email: string, password: string) => {
     const res = await api.login(email, password);

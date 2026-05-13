@@ -25,6 +25,40 @@ type Ticker = {
   quoteVolume: number;
 };
 
+function NotifBell() {
+  const router = useRouter();
+  const [count, setCount] = useState(0);
+  useEffect(() => {
+    let mounted = true;
+    const load = async () => {
+      try {
+        const r = await api.unreadCount();
+        if (mounted) setCount(r.unread || 0);
+      } catch {}
+    };
+    load();
+    const id = setInterval(load, 20000);
+    return () => {
+      mounted = false;
+      clearInterval(id);
+    };
+  }, []);
+  return (
+    <TouchableOpacity
+      style={styles.bell}
+      onPress={() => router.push("/notifications")}
+      testID="notif-bell-btn"
+    >
+      <Ionicons name="notifications-outline" size={20} color="#fff" />
+      {count > 0 && (
+        <View style={styles.bellBadge}>
+          <Text style={styles.bellBadgeText}>{count > 9 ? "9+" : String(count)}</Text>
+        </View>
+      )}
+    </TouchableOpacity>
+  );
+}
+
 export default function Dashboard() {
   const { user } = useAuth();
   const router = useRouter();
@@ -34,8 +68,7 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
-  const load = useCallback(async () => {
-    try {
+  const load = useCallback(async () => {    try {
       const [t, w] = await Promise.all([api.tickers(), api.watchlist().catch(() => [])]);
       setTickers(t);
       setWatch(w);
@@ -102,14 +135,17 @@ export default function Dashboard() {
             <Text style={styles.greeting}>Salut, {user?.name?.split(" ")[0] || "trader"} 👋</Text>
             <Text style={styles.headerSub}>Voici ton cockpit du jour</Text>
           </View>
-          <TouchableOpacity
-            style={styles.aiBadge}
-            onPress={() => router.push("/(tabs)/signals")}
-            testID="header-ai-btn"
-          >
-            <Ionicons name="sparkles" size={14} color={theme.colors.primary} />
-            <Text style={styles.aiBadgeText}>IA</Text>
-          </TouchableOpacity>
+          <View style={{ flexDirection: "row", gap: 8 }}>
+            <NotifBell />
+            <TouchableOpacity
+              style={styles.aiBadge}
+              onPress={() => router.push("/(tabs)/signals")}
+              testID="header-ai-btn"
+            >
+              <Ionicons name="sparkles" size={14} color={theme.colors.primary} />
+              <Text style={styles.aiBadgeText}>IA</Text>
+            </TouchableOpacity>
+          </View>
         </View>
 
         {/* AI Hero */}

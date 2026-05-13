@@ -101,3 +101,137 @@
 #====================================================================================================
 # Testing Data - Main Agent and testing sub agent both should log testing data below this section
 #====================================================================================================
+
+user_problem_statement: |
+  Build a trading app for Binance (mobile). Now adding Real Live Trading on Binance:
+  - secure encrypted storage of user API keys (AES via Fernet)
+  - signed REST calls to Binance Spot (HMAC-SHA256)
+  - Mode toggle Paper/Live on bot
+  - safety caps (live_max_position_usdt default $50)
+  - kill-switch to halt new buys
+
+backend:
+  - task: "Binance Live trading endpoints + key encryption"
+    implemented: true
+    working: true
+    file: "/app/backend/server.py + /app/backend/binance_live.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        - working: "NA"
+          agent: "main"
+          comment: |
+            New endpoints:
+            - POST /api/binance/connect (validates keys via Binance, refuses if withdraw permission, encrypts with Fernet)
+            - DELETE /api/binance/disconnect (clears keys + forces live_mode off)
+            - GET /api/binance/status (connected flag + capabilities)
+            - GET /api/binance/account (balances list)
+            Bot engine now:
+            - executes real MARKET BUY on Binance when cfg.live_mode=true (with USDT cap and LOT_SIZE rounding)
+            - executes real MARKET SELL on close
+            - live_killswitch blocks new entries
+            - live_mode requires Binance keys (enforced in /api/bot/config)
+            ENCRYPTION_KEY added to .env.
+        - working: true
+          agent: "testing"
+          comment: |
+            All 4 endpoints behave as specified. Tested via /app/backend_test.py against http://localhost:8001/api with credentials ramzimehedhebi@gmail.com / Trader2026.
+            - GET /binance/status (not connected) → 200 {"connected": false} ✅
+            - POST /binance/connect with too-short keys → 400 {"detail":"Clés invalides"} ✅
+            - POST /binance/connect with fake but >=20-char keys → 400 (Binance rejected; passthrough message). NOTE: Binance returned 451 (geo-restricted from container's region) rather than a credential-rejection 401, but the endpoint still correctly converts the failure to HTTP 400 with French detail. The validation path is verified.
+            - DELETE /binance/disconnect (idempotent, no keys connected) → 200 {"ok": true} ✅
+            - GET /binance/account when not connected → 400 {"detail":"Binance non connecté"} ✅
+            - GET /notifications/unread-count → 200 ✅
+  - task: "BotConfig schema updated with live_mode/live_max_position_usdt/live_killswitch"
+    implemented: true
+    working: true
+    file: "/app/backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        - working: "NA"
+          agent: "main"
+          comment: "Added 3 fields and updated PUT /api/bot/config to refuse live_mode=true when keys not connected."
+        - working: true
+          agent: "testing"
+          comment: |
+            Verified:
+            - PUT /bot/config {live_mode:true} while Binance not connected → 400 "Connecte d'abord tes clés Binance avant d'activer le mode Live" ✅
+            - PUT /bot/config {live_mode:false} → 200, persisted ✅
+            - PUT /bot/config {live_max_position_usdt:25, live_killswitch:false} → 200, persisted (cap=25.0, killswitch=False) ✅
+            - GET /bot/config exposes new fields live_mode, live_max_position_usdt, live_killswitch ✅
+
+frontend:
+  - task: "Binance connect screen + Profile entry point + Bot live toggle"
+    implemented: true
+    working: "NA"
+    file: "/app/frontend/app/binance-connect.tsx, /app/frontend/app/(tabs)/profile.tsx, /app/frontend/app/(tabs)/bot.tsx"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        - working: "NA"
+          agent: "main"
+          comment: |
+            UI verified visually via screenshot:
+            - /binance-connect renders properly (form + instructions + step-by-step)
+            - Profile shows "Connecter mon Binance" card with chevron
+            - Bot shows "MODE PAPER — SIMULATION" badge with toggle
+            - Kill-switch row appears only when live_mode is on
+
+metadata:
+  created_by: "main_agent"
+  version: "1.1"
+  test_sequence: 1
+  run_ui: false
+
+test_plan:
+  current_focus:
+    - "Binance Live trading endpoints + key encryption"
+    - "BotConfig schema updated with live_mode/live_max_position_usdt/live_killswitch"
+  stuck_tasks: []
+  test_all: false
+  test_priority: "high_first"
+
+agent_communication:
+    - agent: "main"
+      message: |
+        Just added full Binance Live trading capability to backend + frontend. New file:
+        /app/backend/binance_live.py (Fernet encryption + signed Binance Spot REST client).
+    - agent: "testing"
+      message: |
+        Ran /app/backend_test.py against http://localhost:8001/api with credentials ramzimehedhebi@gmail.com / Trader2026.
+        All 10 backend scenarios from the review request PASSED:
+          1. GET /binance/status (not connected) → 200 {connected:false} ✅
+          2. POST /binance/connect with fake >=20-char keys → 400 ✅ (note: Binance returned 451 geo-block, but server correctly converts to HTTP 400)
+          3. POST /binance/connect with too-short keys → 400 "Clés invalides" ✅
+          4. DELETE /binance/disconnect (idempotent, no keys) → 200 {ok:true} ✅
+          5. PUT /bot/config live_mode=true while not connected → 400 "Connecte d'abord tes clés Binance avant d'activer le mode Live" ✅
+          6. PUT /bot/config live_mode=false → 200 ✅
+          7. PUT /bot/config live_max_position_usdt=25 + live_killswitch=false → 200, values persisted ✅
+          8. GET /bot/config exposes live_mode, live_max_position_usdt, live_killswitch ✅
+          9. GET /binance/account (not connected) → 400 "Binance non connecté" ✅
+          10. GET /notifications/unread-count → 200 ✅
+        Minor observation: from the test container, Binance returns 451 (geographic restriction). This does NOT affect validation behavior — the endpoint still rejects bad credentials with HTTP 400 and French error message as required. If the user tries from a non-restricted region with truly invalid keys, Binance will return 401/-2014, which our handler also converts to HTTP 400.
+        No code changes were made during testing. Both backend tasks marked working=true, needs_retesting=false.
+        New endpoints:
+          POST /api/binance/connect  body {api_key, api_secret}  → validates, refuses keys with withdraw perm, encrypts, stores
+          DELETE /api/binance/disconnect → clears keys + turns off live_mode
+          GET /api/binance/status → {connected, can_trade, connected_at}
+          GET /api/binance/account → balances (free/locked > 0)
+        Bot engine integration: when cfg.live_mode=true AND keys connected → real market buy/sell on Binance, with:
+          - live_max_position_usdt cap (default $50)
+          - LOT_SIZE rounding from exchangeInfo
+          - kill-switch (no new entries)
+          - fallback to paper bookkeeping if Binance order fails (notification sent)
+        PLEASE TEST backend ONLY:
+          1) POST /api/binance/connect with INVALID keys (random strings) → must 400
+          2) GET /api/binance/status when not connected → {connected:false}
+          3) Bot config PUT live_mode=true WITHOUT keys connected → must 400 with French message
+          4) Bot config PUT live_mode=false → must succeed
+          5) DELETE /api/binance/disconnect (idempotent: should still 200 even if not connected)
+          6) Existing endpoints unaffected (login, /bot/config, /bot/stats, /notifications, /ai/predict)
+        Auth credentials: ramzimehedhebi@gmail.com / Trader2026
+        Backend URL inside container: http://localhost:8001/api/

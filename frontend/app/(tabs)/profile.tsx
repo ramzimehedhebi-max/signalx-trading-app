@@ -1,14 +1,33 @@
-import React from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert, Platform } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
-import { useRouter } from "expo-router";
+import { useRouter, useFocusEffect } from "expo-router";
 import { theme } from "../../src/theme";
 import { useAuth } from "../../src/contexts/AuthContext";
+import { api } from "../../src/lib/api";
 
 export default function Profile() {
   const { user, logout } = useAuth();
   const router = useRouter();
+  const [binance, setBinance] = useState<any>(null);
+
+  const loadBinance = useCallback(async () => {
+    try {
+      const s = await api.binanceStatus();
+      setBinance(s);
+    } catch {}
+  }, []);
+
+  useEffect(() => {
+    loadBinance();
+  }, [loadBinance]);
+
+  useFocusEffect(
+    useCallback(() => {
+      loadBinance();
+    }, [loadBinance])
+  );
 
   const doLogout = async () => {
     await logout();
@@ -53,6 +72,39 @@ export default function Profile() {
             <Text style={styles.proText}>IA Active</Text>
           </View>
         </View>
+
+        {/* Binance connection — call-to-action */}
+        <TouchableOpacity
+          activeOpacity={0.85}
+          style={[
+            styles.binanceCard,
+            binance?.connected && styles.binanceCardConnected,
+          ]}
+          onPress={() => router.push("/binance-connect")}
+        >
+          <View style={styles.binanceIconWrap}>
+            <Ionicons
+              name={binance?.connected ? "shield-checkmark" : "wallet"}
+              size={22}
+              color={binance?.connected ? theme.colors.success : theme.colors.primary}
+            />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.binanceTitle}>
+              {binance?.connected ? "Compte Binance connecté" : "Connecter mon Binance"}
+            </Text>
+            <Text style={styles.binanceSub}>
+              {binance?.connected
+                ? "Trading réel disponible · Tap pour gérer"
+                : "Trader en réel avec tes propres fonds"}
+            </Text>
+          </View>
+          {binance?.connected ? (
+            <View style={styles.greenDot} />
+          ) : (
+            <Ionicons name="chevron-forward" color={theme.colors.textMuted} size={18} />
+          )}
+        </TouchableOpacity>
 
         <View style={styles.list}>
           {items.map((it, idx) => (
@@ -115,6 +167,38 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(243,186,47,0.12)", borderColor: "rgba(243,186,47,0.4)", borderWidth: 1,
   },
   proText: { color: theme.colors.primary, fontWeight: "800", fontSize: 11 },
+
+  binanceCard: {
+    marginTop: 14,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 14,
+    padding: 16,
+    backgroundColor: theme.colors.surface,
+    borderRadius: 18,
+    borderColor: "rgba(243,186,47,0.4)",
+    borderWidth: 1,
+  },
+  binanceCardConnected: {
+    borderColor: "rgba(0,227,150,0.4)",
+    backgroundColor: "rgba(0,227,150,0.05)",
+  },
+  binanceIconWrap: {
+    width: 44,
+    height: 44,
+    borderRadius: 14,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: theme.colors.surfaceAlt,
+  },
+  binanceTitle: { color: "#fff", fontWeight: "800", fontSize: 14 },
+  binanceSub: { color: theme.colors.textSecondary, fontSize: 11, marginTop: 2 },
+  greenDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: theme.colors.success,
+  },
 
   list: {
     marginTop: 18,

@@ -21,6 +21,15 @@ from emergentintegrations.llm.chat import LlmChat, UserMessage
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
 
+# Binance Live trading helpers (signed REST + Fernet encryption)
+from binance_live import (
+    BinanceClient,
+    encrypt_str,
+    decrypt_str,
+    round_step,
+    extract_executed,
+)
+
 # MongoDB connection
 mongo_url = os.environ['MONGO_URL']
 client = AsyncIOMotorClient(mongo_url)
@@ -698,12 +707,198 @@ async def _fetch_or_compute_prediction(symbol: str, horizon: str = "24h"):
         return None
 
 
+class PushTokenReq(BaseModel):
+    token: str
+
+
+@api_router.post("/user/push-token")
+async def save_push_token(req: PushTokenReq, user=Depends(get_current_user)):
+    await db.users.update_one(
+        {"id": user["id"]}, {"$set": {"push_token": req.token}}
+    )
+    return {"ok": True}
+
+
+@api_router.get("/notifications")
+async def list_notifications(user=Depends(get_current_user), limit: int = 50):
+    cur = db.notifications.find({"user_id": user["id"]}, {"_id": 0}).sort("created_at", -1).limit(limit)
+    items = await cur.to_list(limit)
+    unread = await db.notifications.count_documents({"user_id": user["id"], "read": False})
+    return {"items": items, "unread": unread}
+
+
+@api_router.post("/notifications/{notif_id}/read")
+async def mark_read(notif_id: str, user=Depends(get_current_user)):
+    await db.notifications.update_one(
+        {"id": notif_id, "user_id": user["id"]}, {"$set": {"read": True}}
+    )
+    return {"ok": True}
+
+
+@api_router.post("/notifications/read-all")
+async def mark_all_read(user=Depends(get_current_user)):
+    await db.notifications.update_many(
+        {"user_id": user["id"], "read": False}, {"$set": {"read": True}}
+    )
+    return {"ok": True}
+
+
+@api_router.get("/notifications/unread-count")
+async def unread_count(user=Depends(get_current_user)):
+    n = await db.notifications.count_documents({"user_id": user["id"], "read": False})
+    return {"unread": n}
+
+
+async def _send_push(push_token: str, title: str, body: str, data: dict = None):
+    if not push_token or not push_token.startswith("ExponentPushToken"):
+        return
+    try:
+        async with httpx.AsyncClient(timeout=8.0) as cli:
+            await cli.post(
+                "https://exp.host/--/api/v2/push/send",
+                json={
+                    "to": push_token,
+                    "sound": "default",
+                    "title": title,
+                    "body": body,
+                    "data": data or {},
+                    "priority": "high",
+                },
+            )
+    except Exception as e:
+        logger.warning(f"Push send failed: {e}")
+
+
+async def _create_notification(user_id: str, ntype: str, title: str, body: str, data: dict = None):
+    notif = {
+        "id": str(uuid.uuid4()),
+        "user_id": user_id,
+        "type": ntype,
+        "title": title,
+        "body": body,
+        "data": data or {},
+        "read": False,
+        "created_at": datetime.now(timezone.utc),
+    }
+    await db.notifications.insert_one(notif)
+    # Send push if user has token
+    user = await db.users.find_one({"id": user_id}, {"_id": 0, "push_token": 1})
+    if user and user.get("push_token"):
+        await _send_push(user["push_token"], title, body, {"type": ntype, **(data or {})})
+
+
 # ============ TRADING BOT (PAPER) ============
 DEFAULT_BOT_PAIRS = [
     "BTCUSDT", "ETHUSDT", "SOLUSDT", "BNBUSDT", "XRPUSDT",
     "ADAUSDT", "DOGEUSDT", "AVAXUSDT", "LINKUSDT", "DOTUSDT",
     "MATICUSDT", "LTCUSDT", "ATOMUSDT", "NEARUSDT", "ARBUSDT",
 ]
+
+
+# ============ BINANCE LIVE TRADING ============
+class BinanceConnectReq(BaseModel):
+    api_key: str
+    api_secret: str
+
+
+async def _get_user_binance(user_id: str) -> Optional[BinanceClient]:
+    """Build a BinanceClient from the user's stored encrypted keys. None if not connected."""
+    u = await db.users.find_one({"id": user_id})
+    if not u or not u.get("binance_api_key_enc") or not u.get("binance_api_secret_enc"):
+        return None
+    try:
+        k = decrypt_str(u["binance_api_key_enc"])
+        s = decrypt_str(u["binance_api_secret_enc"])
+        return BinanceClient(k, s)
+    except Exception as e:
+        logger.error(f"Binance decrypt error user={user_id}: {e}")
+        return None
+
+
+@api_router.post("/binance/connect")
+async def binance_connect(req: BinanceConnectReq, user=Depends(get_current_user)):
+    if not req.api_key or not req.api_secret or len(req.api_key) < 20 or len(req.api_secret) < 20:
+        raise HTTPException(status_code=400, detail="Clés invalides")
+    # First, validate the keys against Binance
+    try:
+        cli = BinanceClient(req.api_key, req.api_secret)
+        info = await cli.test_connection()
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Échec de connexion à Binance : {str(e)[:200]}")
+    if not info.get("can_trade"):
+        raise HTTPException(
+            status_code=400,
+            detail="La clé n'a pas la permission Spot Trading activée sur Binance.",
+        )
+    if info.get("can_withdraw"):
+        # SECURITY: refuse keys that allow withdrawals
+        raise HTTPException(
+            status_code=400,
+            detail="⚠️ Cette clé autorise les RETRAITS. Pour ta sécurité, désactive 'Enable Withdrawals' sur Binance et recrée la clé.",
+        )
+    # Encrypt and store
+    await db.users.update_one(
+        {"id": user["id"]},
+        {
+            "$set": {
+                "binance_api_key_enc": encrypt_str(req.api_key),
+                "binance_api_secret_enc": encrypt_str(req.api_secret),
+                "binance_connected_at": datetime.now(timezone.utc),
+                "binance_can_trade": True,
+            }
+        },
+    )
+    return {
+        "ok": True,
+        "can_trade": info["can_trade"],
+        "account_type": info.get("account_type"),
+        "balances": info.get("balances", []),
+    }
+
+
+@api_router.delete("/binance/disconnect")
+async def binance_disconnect(user=Depends(get_current_user)):
+    await db.users.update_one(
+        {"id": user["id"]},
+        {
+            "$unset": {
+                "binance_api_key_enc": "",
+                "binance_api_secret_enc": "",
+                "binance_connected_at": "",
+                "binance_can_trade": "",
+            }
+        },
+    )
+    # Also turn off live mode automatically
+    await db.bot_configs.update_one(
+        {"user_id": user["id"]},
+        {"$set": {"live_mode": False}},
+    )
+    return {"ok": True}
+
+
+@api_router.get("/binance/status")
+async def binance_status(user=Depends(get_current_user)):
+    u = await db.users.find_one({"id": user["id"]})
+    if not u or not u.get("binance_api_key_enc"):
+        return {"connected": False}
+    return {
+        "connected": True,
+        "connected_at": u.get("binance_connected_at"),
+        "can_trade": u.get("binance_can_trade", False),
+    }
+
+
+@api_router.get("/binance/account")
+async def binance_account(user=Depends(get_current_user)):
+    cli = await _get_user_binance(user["id"])
+    if not cli:
+        raise HTTPException(status_code=400, detail="Binance non connecté")
+    try:
+        balances = await cli.get_balances()
+        return {"balances": balances}
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Erreur Binance: {str(e)[:200]}")
 
 
 class BotConfig(BaseModel):
@@ -724,6 +919,10 @@ class BotConfig(BaseModel):
     compounding_enabled: bool = True  # capital grows with realized profits
     ai_predictions_enabled: bool = True  # use AI predictions for entries + exits
     ai_exit_confidence: int = 65  # min confidence for AI to trigger an early exit
+    # ----- LIVE TRADING -----
+    live_mode: bool = False  # false = paper trading, true = real Binance orders
+    live_max_position_usdt: float = 50.0  # SAFETY cap: max USDT per single order in live mode
+    live_killswitch: bool = False  # if true → only close positions, NEVER open new ones
     pairs: List[str] = Field(default_factory=lambda: DEFAULT_BOT_PAIRS.copy())
     last_run_at: Optional[datetime] = None
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
@@ -745,6 +944,9 @@ class BotConfigUpdate(BaseModel):
     compounding_enabled: Optional[bool] = None
     ai_predictions_enabled: Optional[bool] = None
     ai_exit_confidence: Optional[int] = None
+    live_mode: Optional[bool] = None
+    live_max_position_usdt: Optional[float] = None
+    live_killswitch: Optional[bool] = None
 
 
 class BotPosition(BaseModel):
@@ -813,6 +1015,14 @@ async def bot_update_config(req: BotConfigUpdate, user=Depends(get_current_user)
         raise HTTPException(status_code=400, detail="max_positions doit être entre 1 et 10")
     if "capital_usdt" in update and update["capital_usdt"] <= 0:
         raise HTTPException(status_code=400, detail="Capital invalide")
+    # Live mode requires Binance keys connected
+    if update.get("live_mode") is True:
+        u = await db.users.find_one({"id": user["id"]})
+        if not u or not u.get("binance_api_key_enc"):
+            raise HTTPException(
+                status_code=400,
+                detail="Connecte d'abord tes clés Binance avant d'activer le mode Live",
+            )
 
     await db.bot_configs.update_one({"user_id": user["id"]}, {"$set": update})
     cfg = await db.bot_configs.find_one({"user_id": user["id"]}, {"_id": 0})
@@ -1222,6 +1432,40 @@ async def _claude_validate(symbol: str, interval: str, indicators: dict, signal:
 
 
 async def _close_position(user_id: str, position: dict, exit_price: float, reason: str):
+    cfg = await db.bot_configs.find_one({"user_id": user_id}, {"_id": 0}) or {}
+    is_live = bool(cfg.get("live_mode")) and not position.get("paper", False)
+    live_order_id = None
+
+    # If LIVE mode → place a real MARKET SELL on Binance first
+    if is_live:
+        bcli = await _get_user_binance(user_id)
+        if bcli:
+            try:
+                # Round qty DOWN to lot step
+                step = float(position.get("lot_step", 0)) or 0
+                qty_to_sell = round_step(float(position["quantity"]), step) if step > 0 else float(position["quantity"])
+                if qty_to_sell <= 0:
+                    raise RuntimeError("Quantité après arrondi = 0")
+                order = await bcli.market_sell(position["symbol"], qty_to_sell)
+                ex = extract_executed(order)
+                if ex["avg_price"] > 0:
+                    exit_price = ex["avg_price"]
+                live_order_id = order.get("orderId")
+                logger.info(
+                    f"BOT LIVE SELL {position['symbol']} qty={qty_to_sell} avg={ex['avg_price']:.6f} order={live_order_id}"
+                )
+            except Exception as e:
+                logger.exception(f"LIVE SELL FAILED {position['symbol']}: {e}")
+                # Notify the user but still close the position in paper db
+                await _create_notification(
+                    user_id,
+                    "live_error",
+                    f"⚠️ Sortie LIVE échouée {symbolToBase_py(position['symbol'])}",
+                    f"Erreur Binance : {str(e)[:120]}. Position fermée en simulation.",
+                    {"symbol": position["symbol"], "error": str(e)[:200]},
+                )
+                is_live = False  # fallback to paper bookkeeping
+
     invested = position["entry_price"] * position["quantity"]
     exit_val = exit_price * position["quantity"]
     pnl = exit_val - invested
@@ -1239,17 +1483,45 @@ async def _close_position(user_id: str, position: dict, exit_price: float, reaso
         pnl_pct=pnl_pct,
         exit_reason=reason,
     )
-    await db.bot_trades.insert_one(trade.dict())
+    trade_dict = trade.dict()
+    trade_dict["live"] = is_live
+    if live_order_id:
+        trade_dict["live_order_id"] = live_order_id
+    await db.bot_trades.insert_one(trade_dict)
     await db.bot_positions.update_one(
         {"id": position["id"]}, {"$set": {"status": "closed"}}
     )
-    # credit balance back + compounding (capital grows with realized pnl)
-    cfg = await db.bot_configs.find_one({"user_id": user_id}, {"_id": 0}) or {}
+    # Paper bookkeeping (we always track paper balance even in live mode, for stats)
     update = {"$inc": {"paper_balance_usdt": exit_val}}
     if cfg.get("compounding_enabled", True):
         update["$inc"]["capital_usdt"] = pnl  # capital grows by realized pnl
     await db.bot_configs.update_one({"user_id": user_id}, update)
-    logger.info(f"BOT CLOSE {position['symbol']} pnl={pnl:.2f} ({pnl_pct:.2f}%) reason={reason}")
+    live_tag = " [LIVE]" if is_live else ""
+    logger.info(f"BOT CLOSE{live_tag} {position['symbol']} pnl={pnl:.2f} ({pnl_pct:.2f}%) reason={reason}")
+
+    # Send notification
+    sym = symbolToBase_py(position["symbol"])
+    is_win = pnl > 0
+    icon = "🎉" if is_win and reason == "take_profit" else "🛡️" if is_win and "trail" in reason else "🔮" if reason == "ai_exit_baisse" else "✅" if is_win else "❌"
+    reason_fr = {
+        "take_profit": "Take-Profit atteint",
+        "stop_loss": "Stop-Loss déclenché",
+        "trailing_stop": "Trailing SL — gain verrouillé",
+        "ai_exit_baisse": "Sortie IA — baisse anticipée",
+    }.get(reason, reason)
+    title = f"{icon} {sym} fermé : {pnl:+.2f} $"
+    body = f"{reason_fr} · PnL {pnl_pct:+.2f}% · Sortie à ${exit_price:.4f}"
+    await _create_notification(
+        user_id,
+        "trade_close",
+        title,
+        body,
+        {"symbol": position["symbol"], "pnl": pnl, "pnl_pct": pnl_pct, "reason": reason},
+    )
+
+
+def symbolToBase_py(sym: str) -> str:
+    return sym.replace("USDT", "").replace("BUSD", "").replace("USD", "")
 
 
 async def _bot_check_positions(user_id: str):
@@ -1347,6 +1619,10 @@ async def _bot_check_positions(user_id: str):
 
 async def _bot_evaluate_entries(user_id: str, cfg: dict):
     """Look for new entries on configured pairs."""
+    # KILL-SWITCH (live mode): if engaged, refuse to open new positions
+    if cfg.get("live_mode") and cfg.get("live_killswitch"):
+        logger.info(f"BOT KILL-SWITCH on for user={user_id[:8]}, no new entries")
+        return
     open_pos = await db.bot_positions.find(
         {"user_id": user_id, "status": "open"}, {"_id": 0}
     ).to_list(50)
@@ -1440,7 +1716,68 @@ async def _bot_evaluate_entries(user_id: str, cfg: dict):
         if balance < trade_size:
             break
         entry = c["last_price"]
-        qty = trade_size / entry
+
+        # Determine if this position will be LIVE (real Binance order) or PAPER
+        is_live = bool(cfg_now.get("live_mode"))
+        bcli = None
+        lot_step = 0.0
+        if is_live:
+            bcli = await _get_user_binance(user_id)
+            if not bcli:
+                logger.warning(f"BOT LIVE off: no Binance client for user={user_id[:8]}")
+                is_live = False
+
+        if is_live:
+            # SAFETY cap (live_max_position_usdt)
+            live_cap = float(cfg_now.get("live_max_position_usdt", 50.0))
+            live_trade = min(trade_size, live_cap)
+            try:
+                # Fetch symbol filters once for LOT_SIZE step
+                sinfo = await bcli.get_symbol_info(c["symbol"])
+                step = 0.0
+                min_notional = 10.0
+                for f in sinfo.get("filters", []):
+                    if f.get("filterType") == "LOT_SIZE":
+                        step = float(f.get("stepSize", 0))
+                    elif f.get("filterType") in ("MIN_NOTIONAL", "NOTIONAL"):
+                        try:
+                            min_notional = float(f.get("minNotional") or f.get("notional", 10))
+                        except Exception:
+                            pass
+                lot_step = step
+                if live_trade < min_notional:
+                    logger.info(f"BOT LIVE skip {c['symbol']}: notional {live_trade:.2f} < min {min_notional}")
+                    continue
+                order = await bcli.market_buy_quote(c["symbol"], live_trade)
+                ex = extract_executed(order)
+                if ex["qty"] <= 0 or ex["avg_price"] <= 0:
+                    raise RuntimeError("Ordre rempli partiellement ou prix nul")
+                entry = ex["avg_price"]
+                qty = round_step(ex["qty"], step) if step > 0 else ex["qty"]
+                trade_size = ex["quote"]
+                logger.info(
+                    f"BOT LIVE BUY {c['symbol']} quote={live_trade:.2f} -> qty={qty} @ {entry:.6f} order={order.get('orderId')}"
+                )
+                await _create_notification(
+                    user_id,
+                    "live_buy",
+                    f"💸 Achat LIVE : {symbolToBase_py(c['symbol'])}",
+                    f"Acheté ${ex['quote']:.2f} @ ${entry:.4f} sur Binance",
+                    {"symbol": c["symbol"], "entry": entry, "qty": qty, "live": True},
+                )
+            except Exception as e:
+                logger.exception(f"BOT LIVE BUY failed {c['symbol']}: {e}")
+                await _create_notification(
+                    user_id,
+                    "live_error",
+                    f"⚠️ Achat LIVE échoué : {symbolToBase_py(c['symbol'])}",
+                    f"Erreur Binance : {str(e)[:120]}",
+                    {"symbol": c["symbol"], "error": str(e)[:200]},
+                )
+                continue  # do not open paper position when live mode active and order failed
+        else:
+            qty = trade_size / entry
+
         sl = entry * (1 - cfg_now["stop_loss_pct"] / 100)
         fixed_tp = entry * (1 + cfg_now["take_profit_pct"] / 100)
         # Dynamic TP: if AI target is higher than fixed TP, use AI target (let AI prediction guide profit-taking)
@@ -1463,12 +1800,27 @@ async def _bot_evaluate_entries(user_id: str, cfg: dict):
             ai_target_median=ai_target,
             entry_reason=f"{c['signal']['reason']} | IA: {validation_reason}{ai_reason_extra} | TP {tp_source}".strip(" |"),
         )
-        await db.bot_positions.insert_one(pos.dict())
+        pos_dict = pos.dict()
+        pos_dict["live"] = is_live
+        pos_dict["lot_step"] = lot_step
+        await db.bot_positions.insert_one(pos_dict)
         await db.bot_configs.update_one(
             {"user_id": user_id},
             {"$inc": {"paper_balance_usdt": -trade_size}},
         )
-        logger.info(f"BOT OPEN {c['symbol']} @ {entry} qty={qty:.6f} SL={sl:.4f} TP={tp:.4f} ({tp_source}) strength={c['signal']['strength']}")
+        live_tag = " [LIVE]" if is_live else ""
+        logger.info(f"BOT OPEN{live_tag} {c['symbol']} @ {entry} qty={qty:.6f} SL={sl:.4f} TP={tp:.4f} ({tp_source}) strength={c['signal']['strength']}")
+
+        # Notify (skip if already notified for live)
+        if not is_live:
+            sym_base = symbolToBase_py(c["symbol"])
+            await _create_notification(
+                user_id,
+                "trade_open",
+                f"🚀 Position ouverte : {sym_base}",
+                f"Entrée ${entry:.4f} · TP ${tp:.4f} · {trade_size:.0f} $ engagés",
+                {"symbol": c["symbol"], "entry": entry, "tp": tp, "sl": sl},
+            )
 
 
 async def _bot_loop():
