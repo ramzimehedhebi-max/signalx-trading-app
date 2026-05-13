@@ -8,13 +8,13 @@ import {
   ActivityIndicator,
   Alert,
   Platform,
-  Linking,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
-import { useRouter, Stack, useFocusEffect } from "expo-router";
+import { useRouter, Stack, useFocusEffect, useLocalSearchParams } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import * as WebBrowser from "expo-web-browser";
+import * as Linking from "expo-linking";
 import { api } from "../src/lib/api";
 import { theme } from "../src/theme";
 
@@ -29,9 +29,11 @@ const FEATURES_PREMIUM = [
 
 export default function PremiumScreen() {
   const router = useRouter();
+  const params = useLocalSearchParams<{ paid?: string }>();
   const [status, setStatus] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
+  const [postPayBanner, setPostPayBanner] = useState<"success" | "cancel" | null>(null);
 
   const loadStatus = useCallback(async () => {
     setLoading(true);
@@ -49,6 +51,22 @@ export default function PremiumScreen() {
     loadStatus();
   }, [loadStatus]);
 
+  // Handle return-from-Stripe (paid=1) or cancel (paid=0)
+  useEffect(() => {
+    if (params.paid === "1") {
+      setPostPayBanner("success");
+      // Poll status a few times in case the webhook is slightly delayed
+      const interval = setInterval(loadStatus, 2000);
+      const stop = setTimeout(() => clearInterval(interval), 20000);
+      return () => {
+        clearInterval(interval);
+        clearTimeout(stop);
+      };
+    } else if (params.paid === "0") {
+      setPostPayBanner("cancel");
+    }
+  }, [params.paid, loadStatus]);
+
   useFocusEffect(
     useCallback(() => {
       loadStatus();
@@ -58,17 +76,16 @@ export default function PremiumScreen() {
   const onSubscribe = async () => {
     setBusy(true);
     try {
-      const sess = await api.premiumCheckout();
+      // Build dynamic redirect URLs that work in Expo Go (exp://...) AND in built apps (signalx://...)
+      const successUrl = Linking.createURL("premium", { queryParams: { paid: "1" } });
+      const cancelUrl = Linking.createURL("premium", { queryParams: { paid: "0" } });
+      const sess = await api.premiumCheckout(successUrl, cancelUrl);
       if (!sess?.url) throw new Error("URL Stripe manquante");
-      // Open Stripe Checkout in the system browser
       if (Platform.OS === "web") {
         if (typeof window !== "undefined") window.location.href = sess.url;
       } else {
-        const res = await WebBrowser.openAuthSessionAsync(
-          sess.url,
-          "signalx://premium/success"
-        );
-        // After redirect (or dismiss), refresh status
+        await WebBrowser.openAuthSessionAsync(sess.url, successUrl);
+        // After Stripe redirect (or dismiss), refresh status
         await loadStatus();
       }
     } catch (e: any) {
@@ -145,6 +162,41 @@ export default function PremiumScreen() {
       </View>
 
       <ScrollView contentContainerStyle={styles.scroll}>
+        {/* Post-payment banner */}
+        {postPayBanner === "success" && !isPremium && (
+          <View style={[styles.banner, styles.bannerSuccess]}>
+            <Ionicons name="hourglass-outline" size={22} color={theme.colors.success} />
+            <View style={{ flex: 1 }}>
+              <Text style={styles.bannerTitle}>Paiement reçu ✓</Text>
+              <Text style={styles.bannerSub}>
+                Activation Premium en cours… Cela prend généralement 5 à 15 secondes.
+              </Text>
+            </View>
+          </View>
+        )}
+        {postPayBanner === "success" && isPremium && (
+          <View style={[styles.banner, styles.bannerSuccess]}>
+            <Ionicons name="checkmark-circle" size={22} color={theme.colors.success} />
+            <View style={{ flex: 1 }}>
+              <Text style={styles.bannerTitle}>🎉 Bienvenue dans Premium !</Text>
+              <Text style={styles.bannerSub}>
+                Toutes les fonctionnalités sont débloquées.
+              </Text>
+            </View>
+          </View>
+        )}
+        {postPayBanner === "cancel" && (
+          <View style={[styles.banner, styles.bannerCancel]}>
+            <Ionicons name="close-circle-outline" size={22} color={theme.colors.textSecondary} />
+            <View style={{ flex: 1 }}>
+              <Text style={styles.bannerTitle}>Paiement annulé</Text>
+              <Text style={styles.bannerSub}>
+                Aucun montant n'a été débité. Tu peux réessayer à tout moment.
+              </Text>
+            </View>
+          </View>
+        )}
+
         {/* HERO */}
         <LinearGradient
           colors={
@@ -282,6 +334,25 @@ const styles = StyleSheet.create({
   },
   headerTitle: { color: theme.colors.text, fontWeight: "700", fontSize: 17 },
   scroll: { padding: 16, gap: 16 },
+
+  banner: {
+    flexDirection: "row",
+    gap: 12,
+    padding: 14,
+    borderRadius: 14,
+    alignItems: "center",
+    borderWidth: 1,
+  },
+  bannerSuccess: {
+    backgroundColor: "rgba(0,227,150,0.08)",
+    borderColor: "rgba(0,227,150,0.35)",
+  },
+  bannerCancel: {
+    backgroundColor: "rgba(255,255,255,0.04)",
+    borderColor: theme.colors.border,
+  },
+  bannerTitle: { color: "#fff", fontWeight: "800", fontSize: 14 },
+  bannerSub: { color: theme.colors.textSecondary, fontSize: 12, marginTop: 2 },
 
   hero: {
     borderRadius: 22,

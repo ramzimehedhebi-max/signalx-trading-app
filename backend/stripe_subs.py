@@ -47,15 +47,28 @@ async def get_or_create_customer(db, user: dict) -> str:
     return customer.id
 
 
-def create_checkout_session(customer_id: str, user_id: str) -> dict:
-    """Create a Stripe Checkout Session in subscription mode."""
+def create_checkout_session(
+    customer_id: str,
+    user_id: str,
+    success_url: str = None,
+    cancel_url: str = None,
+) -> dict:
+    """Create a Stripe Checkout Session in subscription mode.
+    
+    success_url / cancel_url are passed dynamically from the client so that
+    the redirect works on Expo Go (exp://) as well as standalone apps (signalx://).
+    """
+    final_success = (success_url or SUCCESS_URL)
+    if "{CHECKOUT_SESSION_ID}" not in final_success:
+        sep = "&" if "?" in final_success else "?"
+        final_success = final_success + sep + "session_id={CHECKOUT_SESSION_ID}"
     session = stripe.checkout.Session.create(
         customer=customer_id,
         mode="subscription",
         payment_method_types=["card"],
         line_items=[{"price": STRIPE_PRICE_ID, "quantity": 1}],
-        success_url=SUCCESS_URL + "?session_id={CHECKOUT_SESSION_ID}",
-        cancel_url=CANCEL_URL,
+        success_url=final_success,
+        cancel_url=cancel_url or CANCEL_URL,
         metadata={"app_user_id": user_id},
         # Allow promo codes
         allow_promotion_codes=True,

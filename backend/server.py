@@ -928,8 +928,13 @@ async def premium_status(user=Depends(get_current_user)):
     return await _get_premium_status(user["id"])
 
 
+class PremiumCheckoutReq(BaseModel):
+    success_url: Optional[str] = None
+    cancel_url: Optional[str] = None
+
+
 @api_router.post("/premium/checkout")
-async def premium_checkout(user=Depends(get_current_user)):
+async def premium_checkout(req: PremiumCheckoutReq = None, user=Depends(get_current_user)):
     if not stripe_subs.is_configured():
         raise HTTPException(
             status_code=503,
@@ -940,7 +945,12 @@ async def premium_checkout(user=Depends(get_current_user)):
         raise HTTPException(status_code=404, detail="Utilisateur introuvable")
     try:
         customer_id = await stripe_subs.get_or_create_customer(db, u)
-        sess = stripe_subs.create_checkout_session(customer_id, user["id"])
+        sess = stripe_subs.create_checkout_session(
+            customer_id,
+            user["id"],
+            success_url=(req.success_url if req else None),
+            cancel_url=(req.cancel_url if req else None),
+        )
         return sess
     except Exception as e:
         logger.exception(f"Stripe checkout error: {e}")

@@ -148,6 +148,10 @@ export const api = {
 
   // Premium
   premiumStatus: () => request<any>("/premium/status"),
-  premiumCheckout: () => request<any>("/premium/checkout", { method: "POST" }),
+  premiumCheckout: (success_url?: string, cancel_url?: string) =>
+    request<any>("/premium/checkout", {
+      method: "POST",
+      body: JSON.stringify({ success_url, cancel_url }),
+    }),
   premiumCancel: () => request<any>("/premium/cancel", { method: "POST" }),
 };
