@@ -993,8 +993,6 @@ async def stripe_webhook(request: Request):
         ):
             sub = obj
             if user_doc:
-                upd = stripe_subs.subscription_to_dict(type("S", (), sub) if not hasattr(sub, "id") else sub)
-                # Build directly from dict
                 upd = {
                     "subscription_id": sub.get("id"),
                     "subscription_status": sub.get("status"),
