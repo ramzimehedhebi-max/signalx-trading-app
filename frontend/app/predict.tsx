@@ -13,6 +13,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import * as Haptics from "expo-haptics";
+import { useTranslation } from "react-i18next";
 import { theme, fmtPrice, symbolToBase } from "../src/theme";
 import { api } from "../src/lib/api";
 
@@ -26,6 +27,7 @@ const QUICK_SYMBOLS = ["BTCUSDT", "ETHUSDT", "SOLUSDT", "BNBUSDT", "XRPUSDT"];
 
 export default function Predict() {
   const router = useRouter();
+  const { t } = useTranslation();
   const [horizon, setHorizon] = useState("24h");
   const [tab, setTab] = useState<"top" | "single">("top");
   const [topData, setTopData] = useState<any[]>([]);
@@ -40,7 +42,7 @@ export default function Predict() {
       const r = await api.predictTop(horizon);
       setTopData(r);
     } catch (e: any) {
-      Alert.alert("Erreur", e.message || "Impossible de charger les prédictions");
+      Alert.alert(t("common.error"), e.message || t("predict.load_error"));
     } finally {
       setLoadingTop(false);
     }
@@ -59,7 +61,7 @@ export default function Predict() {
       setSingle(r);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     } catch (e: any) {
-      Alert.alert("Erreur", e.message);
+      Alert.alert(t("common.error"), e.message);
     } finally {
       setLoadingSingle(false);
     }
@@ -79,7 +81,7 @@ export default function Predict() {
           <TouchableOpacity onPress={() => router.back()} style={styles.iconBtn} testID="predict-back-btn">
             <Ionicons name="chevron-back" size={22} color="#fff" />
           </TouchableOpacity>
-          <Text style={styles.headTitle}>Prédictions IA</Text>
+          <Text style={styles.headTitle}>{t("predict.title")}</Text>
           <View style={styles.iconBtn} />
         </View>
 
@@ -88,12 +90,10 @@ export default function Predict() {
           <Text style={styles.aiPillText}>CLAUDE SONNET 4.5</Text>
         </View>
 
-        <Text style={styles.subtitle}>
-          L&apos;IA analyse RSI, volume, volatilité et tendance pour prédire les prix futurs avec niveau de confiance.
-        </Text>
+        <Text style={styles.subtitle}>{t("predict.subtitle")}</Text>
 
         {/* Horizon */}
-        <Text style={styles.label}>HORIZON</Text>
+        <Text style={styles.label}>{t("predict.horizon")}</Text>
         <View style={styles.chips}>
           {HORIZONS.map((h) => (
             <TouchableOpacity
@@ -102,7 +102,7 @@ export default function Predict() {
               style={[styles.chip, horizon === h.v && styles.chipActive]}
               testID={`predict-horizon-${h.v}`}
             >
-              <Text style={[styles.chipText, horizon === h.v && styles.chipTextActive]}>{h.l}</Text>
+              <Text style={[styles.chipText, horizon === h.v && styles.chipTextActive]}>{t(`predict.horizon_${h.v}`)}</Text>
             </TouchableOpacity>
           ))}
         </View>
@@ -115,7 +115,7 @@ export default function Predict() {
             testID="predict-tab-top"
           >
             <Ionicons name="trophy" size={14} color={tab === "top" ? "#000" : theme.colors.textSecondary} />
-            <Text style={[styles.tabText, tab === "top" && styles.tabTextActive]}>Top opportunités</Text>
+            <Text style={[styles.tabText, tab === "top" && styles.tabTextActive]}>{t("predict.tab_top")}</Text>
           </TouchableOpacity>
           <TouchableOpacity
             style={[styles.tab, tab === "single" && styles.tabActive]}
@@ -123,7 +123,7 @@ export default function Predict() {
             testID="predict-tab-single"
           >
             <Ionicons name="search" size={14} color={tab === "single" ? "#000" : theme.colors.textSecondary} />
-            <Text style={[styles.tabText, tab === "single" && styles.tabTextActive]}>Analyse ciblée</Text>
+            <Text style={[styles.tabText, tab === "single" && styles.tabTextActive]}>{t("predict.tab_single")}</Text>
           </TouchableOpacity>
         </View>
 
@@ -139,32 +139,27 @@ export default function Predict() {
           />
         )}
 
-        <Text style={styles.disclaimer}>
-          🛈 Les prédictions IA ne sont pas des conseils financiers. Crois en ce que tu comprends, pas en ce qu&apos;on te promet.
-        </Text>
+        <Text style={styles.disclaimer}>{t("predict.disclaimer")}</Text>
       </ScrollView>
     </SafeAreaView>
   );
 }
 
 function TopPredictionsView({ data, loading }: { data: any[]; loading: boolean }) {
+  const { t } = useTranslation();
   if (loading && data.length === 0) {
     return (
       <View style={{ padding: 40, alignItems: "center" }}>
         <ActivityIndicator color={theme.colors.primary} size="large" />
-        <Text style={{ color: theme.colors.textSecondary, marginTop: 12 }}>
-          Claude analyse 10 cryptos...
-        </Text>
-        <Text style={{ color: theme.colors.textMuted, marginTop: 4, fontSize: 11 }}>
-          (peut prendre 20-30 secondes)
-        </Text>
+        <Text style={{ color: theme.colors.textSecondary, marginTop: 12 }}>{t("predict.analyzing")}</Text>
+        <Text style={{ color: theme.colors.textMuted, marginTop: 4, fontSize: 11 }}>{t("predict.takes_time")}</Text>
       </View>
     );
   }
   if (data.length === 0) {
     return (
       <View style={{ padding: 24, alignItems: "center" }}>
-        <Text style={{ color: theme.colors.textSecondary }}>Aucune prédiction disponible</Text>
+        <Text style={{ color: theme.colors.textSecondary }}>{t("predict.none")}</Text>
       </View>
     );
   }
@@ -178,9 +173,10 @@ function TopPredictionsView({ data, loading }: { data: any[]; loading: boolean }
 }
 
 function SinglePredictionView({ selectedSymbol, setSelectedSymbol, single, loading, onGenerate }: any) {
+  const { t } = useTranslation();
   return (
     <View>
-      <Text style={styles.label}>PAIRE</Text>
+      <Text style={styles.label}>{t("signals.pair")}</Text>
       <View style={styles.chips}>
         {QUICK_SYMBOLS.map((s) => (
           <TouchableOpacity
@@ -207,7 +203,7 @@ function SinglePredictionView({ selectedSymbol, setSelectedSymbol, single, loadi
         ) : (
           <>
             <Ionicons name="rocket" size={16} color="#000" />
-            <Text style={styles.ctaText}>Prédire {symbolToBase(selectedSymbol)}</Text>
+            <Text style={styles.ctaText}>{t("predict.predict_btn", { sym: symbolToBase(selectedSymbol) })}</Text>
           </>
         )}
       </TouchableOpacity>
@@ -218,6 +214,7 @@ function SinglePredictionView({ selectedSymbol, setSelectedSymbol, single, loadi
 }
 
 function PredictionCard({ data, rank, compact }: { data: any; rank?: number; compact?: boolean }) {
+  const { t } = useTranslation();
   const dirColor =
     data.direction === "HAUSSE" ? theme.colors.buy : data.direction === "BAISSE" ? theme.colors.sell : theme.colors.hold;
   const dirIcon =
@@ -251,14 +248,14 @@ function PredictionCard({ data, rank, compact }: { data: any; rank?: number; com
         </View>
         <View style={[styles.dirBadge, { backgroundColor: dirColor }]}>
           <Ionicons name={dirIcon as any} size={14} color="#000" />
-          <Text style={styles.dirText}>{data.direction}</Text>
+          <Text style={styles.dirText}>{data.direction === "HAUSSE" ? t("predict.direction_up") : data.direction === "BAISSE" ? t("predict.direction_down") : t("predict.direction_neutral")}</Text>
         </View>
       </View>
 
       {/* Confidence bar */}
       <View style={{ marginTop: 14 }}>
         <View style={styles.confRow}>
-          <Text style={styles.smallLabel}>Confiance IA</Text>
+          <Text style={styles.smallLabel}>{t("predict.confidence_ai")}</Text>
           <Text style={[styles.confVal, { color: dirColor }]}>{data.confidence}%</Text>
         </View>
         <View style={styles.bar}>
@@ -269,12 +266,12 @@ function PredictionCard({ data, rank, compact }: { data: any; rank?: number; com
       {/* Price targets visual */}
       <View style={styles.targets}>
         <View style={styles.targetCell}>
-          <Text style={[styles.targetL, { color: theme.colors.sell }]}>BAS</Text>
+          <Text style={[styles.targetL, { color: theme.colors.sell }]}>{t("predict.low")}</Text>
           <Text style={styles.targetV}>${fmtPrice(data.target_low)}</Text>
           <Text style={[styles.targetPct, { color: theme.colors.sell }]}>{downPct.toFixed(1)}%</Text>
         </View>
         <View style={[styles.targetCell, { backgroundColor: theme.colors.surfaceAlt }]}>
-          <Text style={[styles.targetL, { color: theme.colors.primary }]}>MÉDIAN</Text>
+          <Text style={[styles.targetL, { color: theme.colors.primary }]}>{t("predict.median")}</Text>
           <Text style={[styles.targetV, { fontSize: 16 }]}>${fmtPrice(data.target_median)}</Text>
           <Text style={[styles.targetPct, { color: medianChange >= 0 ? theme.colors.buy : theme.colors.sell }]}>
             {medianChange >= 0 ? "+" : ""}
@@ -282,7 +279,7 @@ function PredictionCard({ data, rank, compact }: { data: any; rank?: number; com
           </Text>
         </View>
         <View style={styles.targetCell}>
-          <Text style={[styles.targetL, { color: theme.colors.buy }]}>HAUT</Text>
+          <Text style={[styles.targetL, { color: theme.colors.buy }]}>{t("predict.high")}</Text>
           <Text style={styles.targetV}>${fmtPrice(data.target_high)}</Text>
           <Text style={[styles.targetPct, { color: theme.colors.buy }]}>+{upPct.toFixed(1)}%</Text>
         </View>
@@ -296,14 +293,14 @@ function PredictionCard({ data, rank, compact }: { data: any; rank?: number; com
           color={actionColor}
         />
         <Text style={[styles.actionText, { color: actionColor }]}>
-          Action recommandée : {data.action === "BUY" ? "ACHETER" : data.action === "SELL" ? "VENDRE" : "ATTENDRE"}
+          {t("predict.recommended_action")} : {data.action === "BUY" ? t("predict.action_buy") : data.action === "SELL" ? t("predict.action_sell") : t("predict.action_wait")}
         </Text>
       </View>
 
       {/* Key factors */}
       {data.key_factors?.length > 0 && (
         <View style={{ marginTop: 14 }}>
-          <Text style={styles.smallLabel}>FACTEURS CLÉS</Text>
+          <Text style={styles.smallLabel}>{t("predict.key_factors")}</Text>
           <View style={{ gap: 6, marginTop: 8 }}>
             {data.key_factors.map((f: string, i: number) => (
               <View key={i} style={styles.factor}>
@@ -318,7 +315,7 @@ function PredictionCard({ data, rank, compact }: { data: any; rank?: number; com
       {/* Reasoning */}
       {!compact && data.reasoning && (
         <>
-          <Text style={[styles.smallLabel, { marginTop: 14 }]}>ANALYSE</Text>
+          <Text style={[styles.smallLabel, { marginTop: 14 }]}>{t("predict.analysis")}</Text>
           <Text style={styles.reasoning}>{data.reasoning}</Text>
         </>
       )}
@@ -332,7 +329,7 @@ function PredictionCard({ data, rank, compact }: { data: any; rank?: number; com
           {data.indicators?.change_24h_pct?.toFixed(1) ?? "—"}%
         </Text>
         {data.cached && (
-          <Text style={styles.cacheTag}>📦 caché ({data.cached_age_min}min)</Text>
+          <Text style={styles.cacheTag}>{t("predict.cached_age", { min: data.cached_age_min })}</Text>
         )}
       </View>
     </View>

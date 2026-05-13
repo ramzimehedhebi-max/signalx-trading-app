@@ -15,20 +15,16 @@ import { useRouter, Stack, useFocusEffect, useLocalSearchParams } from "expo-rou
 import { Ionicons } from "@expo/vector-icons";
 import * as WebBrowser from "expo-web-browser";
 import * as Linking from "expo-linking";
+import { useTranslation } from "react-i18next";
 import { api } from "../src/lib/api";
 import { theme } from "../src/theme";
 
-const FEATURES_PREMIUM = [
-  { icon: "infinite", text: "Paires illimitées (vs 3 en Free)" },
-  { icon: "sparkles", text: "Prédictions IA illimitées 24h / 3J / 7J" },
-  { icon: "flash", text: "Trading LIVE sur Binance activé" },
-  { icon: "notifications", text: "Notifications push prioritaires" },
-  { icon: "stats-chart", text: "Backtest illimité (30 derniers jours)" },
-  { icon: "shield-checkmark", text: "Trailing SL & compounding avancés" },
-];
+const FEATURE_ICONS = ["infinite", "sparkles", "flash", "notifications", "stats-chart", "shield-checkmark"];
+const FEATURE_KEYS = ["pairs", "predictions", "live_trading", "notifications", "backtest", "advanced"];
 
 export default function PremiumScreen() {
   const router = useRouter();
+  const { t } = useTranslation();
   const params = useLocalSearchParams<{ paid?: string }>();
   const [status, setStatus] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -106,11 +102,7 @@ export default function PremiumScreen() {
         await loadStatus();
       }
     } catch (e: any) {
-      Alert.alert(
-        "Paiement indisponible",
-        e?.message ||
-          "Vérifie ta connexion. Si l'erreur persiste, contacte le support."
-      );
+      Alert.alert(t("premium.checkout_unavailable"), e?.message || t("premium.checkout_unavailable_msg"));
     } finally {
       setBusy(false);
     }
@@ -127,7 +119,7 @@ export default function PremiumScreen() {
         );
         await loadStatus();
       } catch (e: any) {
-        Alert.alert("Erreur", e?.message);
+        Alert.alert(t("common.error"), e?.message);
       } finally {
         setBusy(false);
       }
@@ -135,18 +127,16 @@ export default function PremiumScreen() {
     if (Platform.OS === "web") {
       const ok =
         typeof window !== "undefined" &&
-        window.confirm(
-          "Annuler ton abonnement Premium ? Tu garderas l'accès jusqu'à la fin de la période payée."
-        );
+        window.confirm(t("premium.cancel_confirm_title") + "\n\n" + t("premium.cancel_confirm_msg"));
       if (ok) doCancel();
       return;
     }
     Alert.alert(
-      "Annuler Premium ?",
-      "Tu conserveras l'accès jusqu'à la fin de la période payée.",
+      t("premium.cancel_confirm_title"),
+      t("premium.cancel_confirm_msg"),
       [
-        { text: "Garder", style: "cancel" },
-        { text: "Annuler", style: "destructive", onPress: doCancel },
+        { text: t("premium.cancel_confirm_keep"), style: "cancel" },
+        { text: t("common.cancel"), style: "destructive", onPress: doCancel },
       ]
     );
   };
@@ -174,7 +164,7 @@ export default function PremiumScreen() {
         <TouchableOpacity onPress={() => router.back()} style={styles.headerBtn}>
           <Ionicons name="chevron-back" size={22} color={theme.colors.text} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Premium</Text>
+        <Text style={styles.headerTitle}>{t("premium.title")}</Text>
         <View style={{ width: 36 }} />
       </View>
 
@@ -184,17 +174,15 @@ export default function PremiumScreen() {
           <View style={[styles.banner, styles.bannerSuccess]}>
             <Ionicons name="hourglass-outline" size={22} color={theme.colors.success} />
             <View style={{ flex: 1 }}>
-              <Text style={styles.bannerTitle}>Paiement reçu ✓</Text>
-              <Text style={styles.bannerSub}>
-                Activation Premium en cours… Cela prend généralement 5 à 15 secondes.
-              </Text>
+              <Text style={styles.bannerTitle}>{t("premium.paid_pending_title")}</Text>
+              <Text style={styles.bannerSub}>{t("premium.paid_pending_msg")}</Text>
               <TouchableOpacity
                 onPress={loadStatus}
                 style={styles.refreshBtn}
                 hitSlop={8}
               >
                 <Ionicons name="refresh" size={14} color={theme.colors.success} />
-                <Text style={styles.refreshText}>Vérifier maintenant</Text>
+                <Text style={styles.refreshText}>{t("premium.verify_now")}</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -203,10 +191,8 @@ export default function PremiumScreen() {
           <View style={[styles.banner, styles.bannerSuccess]}>
             <Ionicons name="checkmark-circle" size={22} color={theme.colors.success} />
             <View style={{ flex: 1 }}>
-              <Text style={styles.bannerTitle}>🎉 Bienvenue dans Premium !</Text>
-              <Text style={styles.bannerSub}>
-                Toutes les fonctionnalités sont débloquées.
-              </Text>
+              <Text style={styles.bannerTitle}>{t("premium.paid_success_title")}</Text>
+              <Text style={styles.bannerSub}>{t("premium.paid_success_msg")}</Text>
             </View>
           </View>
         )}
@@ -214,10 +200,8 @@ export default function PremiumScreen() {
           <View style={[styles.banner, styles.bannerCancel]}>
             <Ionicons name="close-circle-outline" size={22} color={theme.colors.textSecondary} />
             <View style={{ flex: 1 }}>
-              <Text style={styles.bannerTitle}>Paiement annulé</Text>
-              <Text style={styles.bannerSub}>
-                Aucun montant n'a été débité. Tu peux réessayer à tout moment.
-              </Text>
+              <Text style={styles.bannerTitle}>{t("premium.cancelled_payment_title")}</Text>
+              <Text style={styles.bannerSub}>{t("premium.cancelled_payment_msg")}</Text>
             </View>
           </View>
         )}
@@ -238,39 +222,35 @@ export default function PremiumScreen() {
               color={isPremium ? theme.colors.success : theme.colors.primary}
             />
           </View>
-          <Text style={styles.heroLabel}>
-            {isPremium ? "MEMBRE PREMIUM" : "DÉBLOQUE TOUT LE POTENTIEL"}
-          </Text>
-          <Text style={styles.heroTitle}>
-            {isPremium ? (status?.lifetime ? "Premium à vie 🎉" : "Tu profites de tous les avantages") : "SignalX Premium"}
-          </Text>
+          <Text style={styles.heroLabel}>{isPremium ? t("premium.hero_label_active") : t("premium.hero_label_inactive")}</Text>
+          <Text style={styles.heroTitle}>{isPremium ? (status?.lifetime ? t("premium.hero_title_lifetime") : t("premium.hero_title_active")) : t("premium.hero_title_inactive")}</Text>
           {!isPremium && (
             <View style={styles.priceRow}>
-              <Text style={styles.priceVal}>9,99 €</Text>
-              <Text style={styles.pricePer}>/mois</Text>
+              <Text style={styles.priceVal}>{t("premium.price")}</Text>
+              <Text style={styles.pricePer}>{t("premium.per_month")}</Text>
             </View>
           )}
           {isPremium && status?.lifetime && (
-            <Text style={styles.heroSub}>Accès permanent débloqué — aucun paiement requis 🚀</Text>
+            <Text style={styles.heroSub}>{t("premium.lifetime_subtitle")}</Text>
           )}
           {isPremium && periodEnd && !status?.lifetime && (
             <Text style={styles.heroSub}>
               {willCancel
-                ? `Accès jusqu'au ${periodEnd.toLocaleDateString("fr-FR")}`
-                : `Renouvellement le ${periodEnd.toLocaleDateString("fr-FR")}`}
+                ? t("premium.access_until", { date: periodEnd.toLocaleDateString() })
+                : t("premium.renewal_on", { date: periodEnd.toLocaleDateString() })}
             </Text>
           )}
         </LinearGradient>
 
         {/* FEATURES */}
         <View style={styles.card}>
-          <Text style={styles.cardTitle}>Ce que tu débloques</Text>
-          {FEATURES_PREMIUM.map((f) => (
-            <View key={f.text} style={styles.featRow}>
+          <Text style={styles.cardTitle}>{t("premium.unlock_title")}</Text>
+          {FEATURE_KEYS.map((key, idx) => (
+            <View key={key} style={styles.featRow}>
               <View style={styles.featIcon}>
-                <Ionicons name={f.icon as any} size={16} color={theme.colors.primary} />
+                <Ionicons name={FEATURE_ICONS[idx] as any} size={16} color={theme.colors.primary} />
               </View>
-              <Text style={styles.featText}>{f.text}</Text>
+              <Text style={styles.featText}>{t(`premium.features.${key}`)}</Text>
             </View>
           ))}
         </View>
@@ -288,20 +268,15 @@ export default function PremiumScreen() {
               ) : (
                 <>
                   <Ionicons name="diamond" size={18} color="#000" />
-                  <Text style={styles.ctaText}>S'abonner — 9,99 €/mois</Text>
+                  <Text style={styles.ctaText}>{t("premium.cta_subscribe")}</Text>
                 </>
               )}
             </TouchableOpacity>
-            <Text style={styles.tinyNote}>
-              Paiement sécurisé via Stripe · Annule à tout moment
-            </Text>
+            <Text style={styles.tinyNote}>{t("premium.cta_note")}</Text>
             {status?.stripe_configured === false && (
               <View style={styles.warnBox}>
                 <Ionicons name="information-circle" size={16} color={theme.colors.primary} />
-                <Text style={styles.warnText}>
-                  Le système de paiement n'est pas encore activé sur le serveur. Le bouton fonctionnera
-                  dès que les clés Stripe seront configurées.
-                </Text>
+                <Text style={styles.warnText}>{t("premium.stripe_not_ready")}</Text>
               </View>
             )}
           </>
@@ -316,25 +291,20 @@ export default function PremiumScreen() {
                 {busy ? (
                   <ActivityIndicator color={theme.colors.danger} />
                 ) : (
-                  <Text style={styles.cancelText}>Annuler l'abonnement</Text>
+                  <Text style={styles.cancelText}>{t("premium.cancel_subscription")}</Text>
                 )}
               </TouchableOpacity>
             ) : (
               <View style={styles.willCancel}>
                 <Ionicons name="time-outline" size={18} color={theme.colors.primary} />
-                <Text style={styles.willCancelText}>
-                  Ton abonnement s'arrêtera à la fin de la période en cours.
-                </Text>
+                <Text style={styles.willCancelText}>{t("premium.will_cancel")}</Text>
               </View>
             )}
           </>
         )}
 
         <View style={{ height: 28 }} />
-        <Text style={styles.legal}>
-          Aucune garantie de gain. Le trading crypto comporte des risques élevés. Tu peux te
-          désabonner à tout moment depuis cet écran.
-        </Text>
+        <Text style={styles.legal}>{t("premium.legal")}</Text>
         <View style={{ height: 16 }} />
       </ScrollView>
     </SafeAreaView>

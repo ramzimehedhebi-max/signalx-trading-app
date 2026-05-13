@@ -13,12 +13,14 @@ import {
 import { Link, useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { useTranslation } from "react-i18next";
 import { theme } from "../../src/theme";
 import { useAuth } from "../../src/contexts/AuthContext";
 
 export default function Register() {
   const { register } = useAuth();
   const router = useRouter();
+  const { t } = useTranslation();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -28,7 +30,7 @@ export default function Register() {
   const onSubmit = async () => {
     setErr(null);
     if (!name.trim() || !email.trim() || password.length < 6) {
-      setErr("Nom, email et mot de passe (6+ caractères) requis");
+      setErr(t("auth.errors.name_email_pwd_required"));
       return;
     }
     setLoading(true);
@@ -36,7 +38,7 @@ export default function Register() {
       await register(email.trim().toLowerCase(), password, name.trim());
       router.replace("/(tabs)");
     } catch (e: any) {
-      setErr(e.message || "Erreur d'inscription");
+      setErr(e.message || t("auth.errors.register_failed"));
     } finally {
       setLoading(false);
     }
@@ -50,26 +52,26 @@ export default function Register() {
             <Ionicons name="chevron-back" size={24} color="#fff" />
           </TouchableOpacity>
 
-          <Text style={styles.title}>Crée ton compte</Text>
-          <Text style={styles.subtitle}>30 secondes pour débloquer les signaux IA.</Text>
+          <Text style={styles.title}>{t("auth.register_title")}</Text>
+          <Text style={styles.subtitle}>{t("auth.register_subtitle")}</Text>
 
           <View style={styles.field}>
-            <Text style={styles.label}>NOM</Text>
+            <Text style={styles.label}>{t("auth.name").toUpperCase()}</Text>
             <TextInput
               value={name}
               onChangeText={setName}
-              placeholder="Ton nom"
+              placeholder={t("auth.name_placeholder")}
               placeholderTextColor={theme.colors.textMuted}
               style={styles.input}
               testID="register-name-input"
             />
           </View>
           <View style={styles.field}>
-            <Text style={styles.label}>EMAIL</Text>
+            <Text style={styles.label}>{t("auth.email").toUpperCase()}</Text>
             <TextInput
               value={email}
               onChangeText={setEmail}
-              placeholder="toi@email.com"
+              placeholder={t("auth.email_placeholder")}
               placeholderTextColor={theme.colors.textMuted}
               autoCapitalize="none"
               keyboardType="email-address"
@@ -78,11 +80,11 @@ export default function Register() {
             />
           </View>
           <View style={styles.field}>
-            <Text style={styles.label}>MOT DE PASSE</Text>
+            <Text style={styles.label}>{t("auth.password").toUpperCase()}</Text>
             <TextInput
               value={password}
               onChangeText={setPassword}
-              placeholder="6 caractères minimum"
+              placeholder={t("auth.password_placeholder")}
               placeholderTextColor={theme.colors.textMuted}
               secureTextEntry
               style={styles.input}
@@ -99,13 +101,13 @@ export default function Register() {
             testID="register-submit-btn"
             activeOpacity={0.85}
           >
-            {loading ? <ActivityIndicator color="#000" /> : <Text style={styles.primaryText}>Créer mon compte</Text>}
+            {loading ? <ActivityIndicator color="#000" /> : <Text style={styles.primaryText}>{t("auth.create_account_btn")}</Text>}
           </TouchableOpacity>
 
           <View style={styles.footer}>
-            <Text style={styles.footerText}>Déjà inscrit ? </Text>
+            <Text style={styles.footerText}>{t("auth.already_registered")} </Text>
             <Link href="/(auth)/login" testID="register-goto-login" replace>
-              <Text style={styles.link}>Se connecter</Text>
+              <Text style={styles.link}>{t("auth.login")}</Text>
             </Link>
           </View>
         </ScrollView>

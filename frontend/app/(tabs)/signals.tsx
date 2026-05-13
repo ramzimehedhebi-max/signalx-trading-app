@@ -15,18 +15,20 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
+import { useTranslation } from "react-i18next";
 import { theme, fmtPrice, symbolToBase } from "../../src/theme";
 import { api } from "../../src/lib/api";
 
 const QUICK_SYMBOLS = ["BTCUSDT", "ETHUSDT", "BNBUSDT", "SOLUSDT", "XRPUSDT", "DOGEUSDT"];
-const INTERVALS: { v: string; l: string }[] = [
-  { v: "15m", l: "15m" },
-  { v: "1h", l: "1h" },
-  { v: "4h", l: "4h" },
-  { v: "1d", l: "1J" },
-];
 
 export default function Signals() {
+  const { t } = useTranslation();
+  const INTERVALS: { v: string; l: string }[] = [
+    { v: "15m", l: t("signals.intervals.15m") },
+    { v: "1h", l: t("signals.intervals.1h") },
+    { v: "4h", l: t("signals.intervals.4h") },
+    { v: "1d", l: t("signals.intervals.1d") },
+  ];
   const [symbol, setSymbol] = useState("BTCUSDT");
   const [interval, setInterval] = useState("1h");
   const [loading, setLoading] = useState(false);
@@ -56,7 +58,7 @@ export default function Signals() {
       setHistory([s, ...history].slice(0, 20));
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     } catch (e: any) {
-      Alert.alert("Erreur", e.message || "Impossible de générer le signal");
+      Alert.alert(t("common.error"), e.message || t("signals.gen_error"));
     } finally {
       setLoading(false);
     }
@@ -82,11 +84,11 @@ export default function Signals() {
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={theme.colors.primary} />}
           keyboardShouldPersistTaps="handled"
         >
-          <Text style={styles.title}>Signaux IA</Text>
-          <Text style={styles.subtitle}>Acheter / vendre — analyse Claude Sonnet 4.5 en temps réel.</Text>
+          <Text style={styles.title}>{t("signals.title")}</Text>
+          <Text style={styles.subtitle}>{t("signals.subtitle")}</Text>
 
           {/* Symbol picker */}
-          <Text style={styles.label}>PAIRE</Text>
+          <Text style={styles.label}>{t("signals.pair")}</Text>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
             {QUICK_SYMBOLS.map((s) => (
               <TouchableOpacity
@@ -104,7 +106,7 @@ export default function Signals() {
             <TextInput
               value={customSymbol}
               onChangeText={setCustomSymbol}
-              placeholder="Autre paire ex: ARBUSDT"
+              placeholder={t("signals.other_pair")}
               placeholderTextColor={theme.colors.textMuted}
               autoCapitalize="characters"
               style={styles.input}
@@ -117,12 +119,12 @@ export default function Signals() {
               style={styles.miniBtn}
               testID="signal-custom-set"
             >
-              <Text style={styles.miniBtnText}>Choisir</Text>
+              <Text style={styles.miniBtnText}>{t("signals.choose")}</Text>
             </TouchableOpacity>
           </View>
 
           {/* Interval */}
-          <Text style={styles.label}>INTERVALLE</Text>
+          <Text style={styles.label}>{t("signals.interval")}</Text>
           <View style={styles.intervals}>
             {INTERVALS.map((i) => (
               <TouchableOpacity
@@ -154,7 +156,7 @@ export default function Signals() {
             ) : (
               <>
                 <Ionicons name="sparkles" size={18} color="#000" />
-                <Text style={styles.ctaText}>Lancer l&apos;analyse IA</Text>
+                <Text style={styles.ctaText}>{t("signals.run_ai")}</Text>
               </>
             )}
           </TouchableOpacity>
@@ -181,7 +183,7 @@ export default function Signals() {
               </View>
 
               <View style={styles.confRow}>
-                <Text style={styles.confLabel}>Confiance</Text>
+                <Text style={styles.confLabel}>{t("signals.confidence")}</Text>
                 <Text style={[styles.confValue, { color: colorFor(signal.action) }]}>{signal.confidence}%</Text>
               </View>
               <View style={styles.barTrack}>
@@ -195,17 +197,17 @@ export default function Signals() {
 
               <View style={styles.gridRow}>
                 <View style={styles.metric}>
-                  <Text style={styles.metricLabel}>ENTRÉE</Text>
+                  <Text style={styles.metricLabel}>{t("signals.entry")}</Text>
                   <Text style={styles.metricValue}>{signal.entry ? `$${fmtPrice(signal.entry)}` : "—"}</Text>
                 </View>
                 <View style={styles.metric}>
-                  <Text style={styles.metricLabel}>OBJECTIF</Text>
+                  <Text style={styles.metricLabel}>{t("signals.target")}</Text>
                   <Text style={[styles.metricValue, { color: theme.colors.buy }]}>
                     {signal.target ? `$${fmtPrice(signal.target)}` : "—"}
                   </Text>
                 </View>
                 <View style={styles.metric}>
-                  <Text style={styles.metricLabel}>STOP-LOSS</Text>
+                  <Text style={styles.metricLabel}>{t("signals.stop_loss")}</Text>
                   <Text style={[styles.metricValue, { color: theme.colors.sell }]}>
                     {signal.stop_loss ? `$${fmtPrice(signal.stop_loss)}` : "—"}
                   </Text>
@@ -214,14 +216,14 @@ export default function Signals() {
 
               <View style={styles.timeframe}>
                 <Ionicons name="time-outline" color={theme.colors.textSecondary} size={14} />
-                <Text style={styles.timeframeText}>Horizon: {signal.timeframe}</Text>
+                <Text style={styles.timeframeText}>{t("signals.horizon_label")}: {signal.timeframe}</Text>
               </View>
 
-              <Text style={styles.reasonLabel}>POURQUOI</Text>
+              <Text style={styles.reasonLabel}>{t("signals.why")}</Text>
               <Text style={styles.reason}>{signal.reasoning}</Text>
 
               <View style={styles.indicatorsBox}>
-                <Text style={styles.indHead}>Indicateurs</Text>
+                <Text style={styles.indHead}>{t("signals.indicators")}</Text>
                 <View style={styles.indGrid}>
                   {signal.indicators?.rsi14 !== undefined && (
                     <Text style={styles.ind}>RSI(14): <Text style={styles.indV}>{signal.indicators.rsi14}</Text></Text>
@@ -243,7 +245,7 @@ export default function Signals() {
           {/* History */}
           {history.length > 0 && (
             <>
-              <Text style={[styles.sectionTitle, { marginTop: 28 }]}>Historique</Text>
+              <Text style={[styles.sectionTitle, { marginTop: 28 }]}>{t("signals.history")}</Text>
               {history.slice(0, 6).map((h: any, i: number) => (
                 <View key={i} style={styles.histRow}>
                   <View style={[styles.histPill, { backgroundColor: colorFor(h.action) }]}>

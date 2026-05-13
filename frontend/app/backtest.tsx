@@ -14,6 +14,7 @@ import { Ionicons } from "@expo/vector-icons";
 import Svg, { Path, Defs, LinearGradient, Stop, Line } from "react-native-svg";
 import { useRouter } from "expo-router";
 import * as Haptics from "expo-haptics";
+import { useTranslation } from "react-i18next";
 import { theme, fmtUsd, symbolToBase } from "../src/theme";
 import { api } from "../src/lib/api";
 
@@ -26,6 +27,7 @@ const PERIODS = [
 
 export default function Backtest() {
   const router = useRouter();
+  const { t } = useTranslation();
   const [days, setDays] = useState(30);
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<any | null>(null);
@@ -51,7 +53,7 @@ export default function Backtest() {
         r.total_pnl >= 0 ? Haptics.NotificationFeedbackType.Success : Haptics.NotificationFeedbackType.Warning
       );
     } catch (e: any) {
-      Alert.alert("Erreur", e.message || "Backtest échoué");
+      Alert.alert(t("common.error"), e.message || t("backtest.error"));
     } finally {
       setLoading(false);
     }
@@ -64,15 +66,13 @@ export default function Backtest() {
           <TouchableOpacity onPress={() => router.back()} style={styles.iconBtn} testID="backtest-back-btn">
             <Ionicons name="chevron-back" size={22} color="#fff" />
           </TouchableOpacity>
-          <Text style={styles.headTitle}>Backtest</Text>
+          <Text style={styles.headTitle}>{t("backtest.title")}</Text>
           <View style={styles.iconBtn} />
         </View>
 
-        <Text style={styles.subtitle}>
-          Simule la stratégie de ton bot sur des données Binance historiques. Aucun appel IA (rapide & gratuit).
-        </Text>
+        <Text style={styles.subtitle}>{t("backtest.subtitle")}</Text>
 
-        <Text style={styles.label}>PÉRIODE</Text>
+        <Text style={styles.label}>{t("backtest.period")}</Text>
         <View style={styles.periods}>
           {PERIODS.map((p) => (
             <TouchableOpacity
@@ -81,7 +81,7 @@ export default function Backtest() {
               style={[styles.chip, days === p.v && styles.chipActive]}
               testID={`bt-period-${p.v}`}
             >
-              <Text style={[styles.chipText, days === p.v && styles.chipTextActive]}>{p.l}</Text>
+              <Text style={[styles.chipText, days === p.v && styles.chipTextActive]}>{t(`backtest.period_${p.v}`)}</Text>
             </TouchableOpacity>
           ))}
         </View>
@@ -97,7 +97,7 @@ export default function Backtest() {
           ) : (
             <>
               <Ionicons name="rocket" size={18} color="#000" />
-              <Text style={styles.ctaText}>Lancer la simulation</Text>
+              <Text style={styles.ctaText}>{t("backtest.run_btn")}</Text>
             </>
           )}
         </TouchableOpacity>
@@ -107,9 +107,7 @@ export default function Backtest() {
         {!result && !loading && (
           <View style={styles.hint}>
             <Ionicons name="information-circle-outline" size={18} color={theme.colors.textMuted} />
-            <Text style={styles.hintText}>
-              La simulation utilise les paramètres actuels de ton bot (capital, SL, TP, paires).
-            </Text>
+            <Text style={styles.hintText}>{t("backtest.hint")}</Text>
           </View>
         )}
         <View style={{ height: 40 }} />
@@ -119,6 +117,7 @@ export default function Backtest() {
 }
 
 function BacktestResult({ data }: { data: any }) {
+  const { t } = useTranslation();
   const isProfit = data.total_pnl >= 0;
   const outperform = data.outperformance_pct >= 0;
   const width = Dimensions.get("window").width - 48;
@@ -127,23 +126,23 @@ function BacktestResult({ data }: { data: any }) {
     <View style={{ gap: 14, marginTop: 22 }}>
       {/* Headline Result */}
       <View style={[styles.resultCard, { borderColor: isProfit ? theme.colors.buy : theme.colors.sell }]}>
-        <Text style={styles.resultL}>SI TU AVAIS LANCÉ IL Y A {data.period_days} JOURS</Text>
+        <Text style={styles.resultL}>{t("backtest.headline", { days: data.period_days })}</Text>
         <Text style={[styles.resultValue, { color: isProfit ? theme.colors.buy : theme.colors.sell }]}>
           {isProfit ? "+" : ""}
           {fmtUsd(data.total_pnl)}
         </Text>
         <Text style={[styles.resultPct, { color: isProfit ? theme.colors.buy : theme.colors.sell }]}>
           {isProfit ? "+" : ""}
-          {data.total_pnl_pct.toFixed(2)}% en {data.period_days} jours
+          {t("backtest.in_days", { pct: data.total_pnl_pct.toFixed(2), days: data.period_days })}
         </Text>
         <View style={styles.capitalRow}>
           <View style={styles.capBox}>
-            <Text style={styles.capL}>Capital départ</Text>
+            <Text style={styles.capL}>{t("backtest.capital_start")}</Text>
             <Text style={styles.capV}>{fmtUsd(data.capital_start)}</Text>
           </View>
           <Ionicons name="arrow-forward" color={theme.colors.textMuted} size={18} />
           <View style={styles.capBox}>
-            <Text style={styles.capL}>Capital final</Text>
+            <Text style={styles.capL}>{t("backtest.capital_end")}</Text>
             <Text style={styles.capV}>{fmtUsd(data.capital_end)}</Text>
           </View>
         </View>
@@ -152,33 +151,33 @@ function BacktestResult({ data }: { data: any }) {
       {/* Equity curve */}
       {data.equity_curve?.length > 1 && (
         <View style={styles.chartCard}>
-          <Text style={styles.chartTitle}>📈 Évolution du capital</Text>
+          <Text style={styles.chartTitle}>{t("backtest.equity_curve")}</Text>
           <EquityCurve data={data.equity_curve} start={data.capital_start} width={width - 32} />
         </View>
       )}
 
       {/* Stats grid */}
       <View style={styles.stats}>
-        <StatBox label="TRADES" value={String(data.trades_count)} />
+        <StatBox label={t("backtest.trades")} value={String(data.trades_count)} />
         <StatBox
-          label="WIN RATE"
+          label={t("backtest.winrate")}
           value={`${data.win_rate_pct.toFixed(0)}%`}
           color={data.win_rate_pct >= 50 ? theme.colors.buy : theme.colors.sell}
         />
-        <StatBox label="GAINS" value={String(data.wins)} color={theme.colors.buy} />
-        <StatBox label="PERTES" value={String(data.losses)} color={theme.colors.sell} />
+        <StatBox label={t("backtest.wins")} value={String(data.wins)} color={theme.colors.buy} />
+        <StatBox label={t("backtest.losses")} value={String(data.losses)} color={theme.colors.sell} />
       </View>
 
       <View style={styles.stats}>
-        <StatBox label="GAIN MOYEN" value={fmtUsd(data.avg_win)} color={theme.colors.buy} small />
-        <StatBox label="PERTE MOY." value={fmtUsd(data.avg_loss)} color={theme.colors.sell} small />
+        <StatBox label={t("backtest.avg_win")} value={fmtUsd(data.avg_win)} color={theme.colors.buy} small />
+        <StatBox label={t("backtest.avg_loss")} value={fmtUsd(data.avg_loss)} color={theme.colors.sell} small />
       </View>
 
       {/* Best/worst */}
       {data.best_trade && (
         <View style={styles.bwRow}>
           <View style={[styles.bwCard, { borderColor: "rgba(0,227,150,0.3)" }]}>
-            <Text style={styles.bwL}>🏆 MEILLEUR</Text>
+            <Text style={styles.bwL}>{t("backtest.best")}</Text>
             <Text style={styles.bwSym}>{symbolToBase(data.best_trade.symbol)}</Text>
             <Text style={[styles.bwV, { color: theme.colors.buy }]}>
               +{fmtUsd(data.best_trade.pnl)} ({data.best_trade.pnl_pct.toFixed(2)}%)
@@ -186,7 +185,7 @@ function BacktestResult({ data }: { data: any }) {
           </View>
           {data.worst_trade && (
             <View style={[styles.bwCard, { borderColor: "rgba(255,69,96,0.3)" }]}>
-              <Text style={styles.bwL}>💀 PIRE</Text>
+              <Text style={styles.bwL}>{t("backtest.worst")}</Text>
               <Text style={styles.bwSym}>{symbolToBase(data.worst_trade.symbol)}</Text>
               <Text style={[styles.bwV, { color: theme.colors.sell }]}>
                 {fmtUsd(data.worst_trade.pnl)} ({data.worst_trade.pnl_pct.toFixed(2)}%)
@@ -198,23 +197,23 @@ function BacktestResult({ data }: { data: any }) {
 
       {/* Buy & Hold comparison */}
       <View style={styles.compareCard}>
-        <Text style={styles.compareTitle}>🆚 Vs. Buy & Hold</Text>
+        <Text style={styles.compareTitle}>{t("backtest.vs_hodl")}</Text>
         <View style={styles.compareRow}>
-          <Text style={styles.compareLabel}>Bot IA</Text>
+          <Text style={styles.compareLabel}>{t("backtest.bot_ai")}</Text>
           <Text style={[styles.compareVal, { color: isProfit ? theme.colors.buy : theme.colors.sell }]}>
             {isProfit ? "+" : ""}
             {data.total_pnl_pct.toFixed(2)}%
           </Text>
         </View>
         <View style={styles.compareRow}>
-          <Text style={styles.compareLabel}>Acheter & garder (moy. paires)</Text>
+          <Text style={styles.compareLabel}>{t("backtest.hodl")}</Text>
           <Text style={[styles.compareVal, { color: data.buy_hold_pct >= 0 ? theme.colors.buy : theme.colors.sell }]}>
             {data.buy_hold_pct >= 0 ? "+" : ""}
             {data.buy_hold_pct.toFixed(2)}%
           </Text>
         </View>
         <View style={[styles.compareRow, styles.compareRowBorder]}>
-          <Text style={styles.compareLabel}>Surperformance</Text>
+          <Text style={styles.compareLabel}>{t("backtest.outperf")}</Text>
           <Text style={[styles.compareVal, { color: outperform ? theme.colors.buy : theme.colors.sell }]}>
             {outperform ? "+" : ""}
             {data.outperformance_pct.toFixed(2)}%
@@ -225,41 +224,39 @@ function BacktestResult({ data }: { data: any }) {
       {/* Recent trades */}
       {data.trades?.length > 0 && (
         <>
-          <Text style={styles.sectionT}>Derniers trades simulés</Text>
-          {data.trades.slice(-10).reverse().map((t: any, i: number) => (
+          <Text style={styles.sectionT}>{t("backtest.recent_trades")}</Text>
+          {data.trades.slice(-10).reverse().map((tr: any, i: number) => (
             <View key={i} style={styles.tradeRow}>
               <View
                 style={[
                   styles.tradePill,
-                  { backgroundColor: t.pnl >= 0 ? theme.colors.buy : theme.colors.sell },
+                  { backgroundColor: tr.pnl >= 0 ? theme.colors.buy : theme.colors.sell },
                 ]}
               >
-                <Ionicons name={t.pnl >= 0 ? "checkmark" : "close"} size={11} color="#000" />
+                <Ionicons name={tr.pnl >= 0 ? "checkmark" : "close"} size={11} color="#000" />
               </View>
               <View style={{ flex: 1 }}>
                 <Text style={styles.tradeSym}>
-                  {symbolToBase(t.symbol)}{" "}
+                  {symbolToBase(tr.symbol)}{" "}
                   <Text style={styles.tradeReason}>
-                    · {t.exit_reason === "take_profit" ? "TP" : t.exit_reason === "stop_loss" ? "SL" : "Fin"}
+                    · {tr.exit_reason === "take_profit" ? t("backtest.exit_reason.tp") : tr.exit_reason === "stop_loss" ? t("backtest.exit_reason.sl") : t("backtest.exit_reason.end")}
                   </Text>
                 </Text>
                 <Text style={styles.tradeTime}>
-                  {new Date(t.entry_time).toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit" })} →{" "}
-                  {new Date(t.exit_time).toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit" })}
+                  {new Date(tr.entry_time).toLocaleDateString(undefined, { day: "2-digit", month: "2-digit" })} →{" "}
+                  {new Date(tr.exit_time).toLocaleDateString(undefined, { day: "2-digit", month: "2-digit" })}
                 </Text>
               </View>
-              <Text style={[styles.tradePnl, { color: t.pnl >= 0 ? theme.colors.buy : theme.colors.sell }]}>
-                {t.pnl >= 0 ? "+" : ""}
-                {t.pnl_pct.toFixed(2)}%
+              <Text style={[styles.tradePnl, { color: tr.pnl >= 0 ? theme.colors.buy : theme.colors.sell }]}>
+                {tr.pnl >= 0 ? "+" : ""}
+                {tr.pnl_pct.toFixed(2)}%
               </Text>
             </View>
           ))}
         </>
       )}
 
-      <Text style={styles.disclaimer}>
-        🛈 Les performances passées ne garantissent pas les performances futures. Les frais de trading ne sont pas inclus dans la simulation.
-      </Text>
+      <Text style={styles.disclaimer}>{t("backtest.disclaimer")}</Text>
     </View>
   );
 }

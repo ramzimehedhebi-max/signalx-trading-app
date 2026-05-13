@@ -11,11 +11,13 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
+import { useTranslation } from "react-i18next";
 import { theme } from "../src/theme";
 import { api } from "../src/lib/api";
 
 export default function Notifications() {
   const router = useRouter();
+  const { t } = useTranslation();
   const [items, setItems] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -78,7 +80,7 @@ export default function Notifications() {
         <TouchableOpacity onPress={() => router.back()} style={styles.iconBtn} testID="notif-back-btn">
           <Ionicons name="chevron-back" size={22} color="#fff" />
         </TouchableOpacity>
-        <Text style={styles.title}>Notifications</Text>
+        <Text style={styles.title}>{t("notifications.title")}</Text>
         <TouchableOpacity onPress={markAll} style={styles.iconBtn} testID="notif-mark-all">
           <Ionicons name="checkmark-done" size={18} color="#fff" />
         </TouchableOpacity>
@@ -91,8 +93,8 @@ export default function Notifications() {
         {items.length === 0 ? (
           <View style={styles.empty}>
             <Ionicons name="notifications-off-outline" size={36} color={theme.colors.textMuted} />
-            <Text style={styles.emptyT}>Aucune notification</Text>
-            <Text style={styles.emptyS}>Tu seras alerté dès qu&apos;un trade s&apos;ouvre ou se ferme</Text>
+            <Text style={styles.emptyT}>{t("notifications.empty")}</Text>
+            <Text style={styles.emptyS}>{t("notifications.empty_sub")}</Text>
           </View>
         ) : (
           items.map((n) => {

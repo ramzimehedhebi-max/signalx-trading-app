@@ -15,11 +15,13 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter, Stack } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
+import { useTranslation } from "react-i18next";
 import { api } from "../src/lib/api";
 import { theme } from "../src/theme";
 
 export default function BinanceConnectScreen() {
   const router = useRouter();
+  const { t } = useTranslation();
   const [status, setStatus] = useState<any>(null);
   const [balances, setBalances] = useState<any[]>([]);
   const [apiKey, setApiKey] = useState("");
@@ -52,7 +54,7 @@ export default function BinanceConnectScreen() {
 
   const onConnect = async () => {
     if (apiKey.trim().length < 20 || apiSecret.trim().length < 20) {
-      Alert.alert("Clés invalides", "Vérifie les clés API Binance.");
+      Alert.alert(t("binance.invalid_keys_title"), t("binance.invalid_keys_msg"));
       return;
     }
     setBusy(true);
@@ -61,12 +63,12 @@ export default function BinanceConnectScreen() {
       setApiKey("");
       setApiSecret("");
       Alert.alert(
-        "✅ Binance connecté !",
-        `Type : ${res.account_type || "SPOT"}\nTrading autorisé : ${res.can_trade ? "Oui" : "Non"}`
+        t("binance.success_title"),
+        t("binance.success_msg", { type: res.account_type || "SPOT", trade: res.can_trade ? t("common.yes") : t("common.no") })
       );
       await loadStatus();
     } catch (e: any) {
-      Alert.alert("Échec de connexion", e?.message || "Erreur inconnue");
+      Alert.alert(t("binance.fail_title"), e?.message || t("binance.unknown_error"));
     } finally {
       setBusy(false);
     }
@@ -74,12 +76,12 @@ export default function BinanceConnectScreen() {
 
   const onDisconnect = () => {
     Alert.alert(
-      "Déconnecter Binance ?",
-      "Le bot repassera automatiquement en mode Paper. Tu pourras te reconnecter à tout moment.",
+      t("binance.disconnect_confirm"),
+      t("binance.disconnect_msg"),
       [
-        { text: "Annuler", style: "cancel" },
+        { text: t("common.cancel"), style: "cancel" },
         {
-          text: "Déconnecter",
+          text: t("binance.disconnect_btn"),
           style: "destructive",
           onPress: async () => {
             setBusy(true);
@@ -88,7 +90,7 @@ export default function BinanceConnectScreen() {
               setBalances([]);
               await loadStatus();
             } catch (e: any) {
-              Alert.alert("Erreur", e?.message);
+              Alert.alert(t("common.error"), e?.message);
             } finally {
               setBusy(false);
             }
@@ -107,7 +109,7 @@ export default function BinanceConnectScreen() {
         <TouchableOpacity onPress={() => router.back()} style={styles.headerBtn}>
           <Ionicons name="chevron-back" size={22} color={theme.colors.text} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Connexion Binance</Text>
+        <Text style={styles.headerTitle}>{t("binance.title")}</Text>
         <View style={{ width: 36 }} />
       </View>
 
@@ -134,17 +136,13 @@ export default function BinanceConnectScreen() {
                 />
               </View>
               <View style={{ flex: 1 }}>
-                <Text style={styles.heroLabel}>
-                  {status?.connected ? "COMPTE CONNECTÉ" : "NON CONNECTÉ"}
-                </Text>
-                <Text style={styles.heroTitle}>
-                  {status?.connected ? "Trading réel activé" : "Mode Paper uniquement"}
-                </Text>
+                <Text style={styles.heroLabel}>{status?.connected ? t("binance.status_connected") : t("binance.status_disconnected")}</Text>
+                <Text style={styles.heroTitle}>{status?.connected ? t("binance.trading_active") : t("binance.paper_only")}</Text>
               </View>
             </View>
             {status?.connected && usdtBal && (
               <View style={styles.balanceCard}>
-                <Text style={styles.balanceLabel}>Solde USDT disponible</Text>
+                <Text style={styles.balanceLabel}>{t("binance.balance")}</Text>
                 <Text style={styles.balanceValue}>${parseFloat(usdtBal.free).toFixed(2)}</Text>
               </View>
             )}
@@ -154,61 +152,56 @@ export default function BinanceConnectScreen() {
             <>
               {/* INSTRUCTIONS */}
               <View style={styles.card}>
-                <Text style={styles.sectionTitle}>📋 Comment obtenir tes clés ?</Text>
+                <Text style={styles.sectionTitle}>{t("binance.how_to_title")}</Text>
                 <View style={styles.step}>
                   <Text style={styles.stepNum}>1</Text>
                   <Text style={styles.stepText}>
-                    Connecte-toi à <Text style={styles.bold}>Binance</Text> → Profil → API Management
+                    {t("binance.step_1_part1")}<Text style={styles.bold}>{t("binance.step_1_brand")}</Text>{t("binance.step_1_part2")}
                   </Text>
                 </View>
                 <View style={styles.step}>
                   <Text style={styles.stepNum}>2</Text>
                   <Text style={styles.stepText}>
-                    Clique sur <Text style={styles.bold}>"Create API"</Text> → choisis{" "}
-                    <Text style={styles.bold}>"System generated"</Text>
+                    {t("binance.step_2_part1")}<Text style={styles.bold}>{t("binance.step_2_strong1")}</Text>{t("binance.step_2_part2")}<Text style={styles.bold}>{t("binance.step_2_strong2")}</Text>
                   </Text>
                 </View>
                 <View style={styles.step}>
                   <Text style={styles.stepNum}>3</Text>
                   <Text style={styles.stepText}>
-                    Active <Text style={styles.bold}>UNIQUEMENT</Text> :{"\n"}✅ Enable Spot & Margin Trading
+                    {t("binance.step_3_part1")}<Text style={styles.bold}>{t("binance.step_3_strong")}</Text>{t("binance.step_3_part2")}
                   </Text>
                 </View>
                 <View style={styles.step}>
                   <Text style={styles.stepNum}>4</Text>
                   <Text style={styles.stepText}>
-                    <Text style={styles.bold}>DÉSACTIVE absolument</Text> :{"\n"}❌ Enable Withdrawals
-                    {"\n"}❌ Enable Universal Transfer
+                    <Text style={styles.bold}>{t("binance.step_4_strong")}</Text>{t("binance.step_4_part")}
                   </Text>
                 </View>
                 <View style={styles.warn}>
                   <Ionicons name="warning" size={16} color={theme.colors.danger} />
-                  <Text style={styles.warnText}>
-                    Sans la permission "Withdrawals", personne ne peut retirer tes fonds — même si tes
-                    clés étaient compromises.
-                  </Text>
+                  <Text style={styles.warnText}>{t("binance.warn_withdrawals")}</Text>
                 </View>
               </View>
 
               {/* FORM */}
               <View style={styles.card}>
-                <Text style={styles.sectionTitle}>🔑 Saisis tes clés API</Text>
+                <Text style={styles.sectionTitle}>{t("binance.form_title")}</Text>
                 <Text style={styles.label}>API Key</Text>
                 <TextInput
                   value={apiKey}
                   onChangeText={setApiKey}
-                  placeholder="64 caractères"
+                  placeholder={t("binance.placeholder")}
                   placeholderTextColor={theme.colors.textMuted}
                   style={styles.input}
                   autoCapitalize="none"
                   autoCorrect={false}
                 />
-                <Text style={styles.label}>API Secret</Text>
+                <Text style={styles.label}>{t("binance.api_secret")}</Text>
                 <View style={styles.secretRow}>
                   <TextInput
                     value={apiSecret}
                     onChangeText={setApiSecret}
-                    placeholder="64 caractères"
+                    placeholder={t("binance.placeholder")}
                     placeholderTextColor={theme.colors.textMuted}
                     style={[styles.input, { flex: 1, marginBottom: 0 }]}
                     autoCapitalize="none"
@@ -237,15 +230,12 @@ export default function BinanceConnectScreen() {
                   ) : (
                     <>
                       <Ionicons name="link" size={18} color="#000" />
-                      <Text style={styles.primaryBtnText}>Connecter mon compte Binance</Text>
+                      <Text style={styles.primaryBtnText}>{t("binance.connect_btn")}</Text>
                     </>
                   )}
                 </TouchableOpacity>
 
-                <Text style={styles.tinyNote}>
-                  🔒 Tes clés sont chiffrées (AES-128) avant d'être stockées. Personne — pas même le
-                  support — ne peut les lire en clair.
-                </Text>
+                <Text style={styles.tinyNote}>{t("binance.encryption_note")}</Text>
               </View>
             </>
           ) : (
@@ -253,13 +243,13 @@ export default function BinanceConnectScreen() {
               {/* BALANCES */}
               <View style={styles.card}>
                 <View style={styles.cardHeader}>
-                  <Text style={styles.sectionTitle}>💰 Tes soldes</Text>
+                  <Text style={styles.sectionTitle}>{t("binance.balances")}</Text>
                   <TouchableOpacity onPress={loadStatus}>
                     <Ionicons name="refresh" size={20} color={theme.colors.textSecondary} />
                   </TouchableOpacity>
                 </View>
                 {balances.length === 0 ? (
-                  <Text style={styles.empty}>Aucun solde positif détecté</Text>
+                  <Text style={styles.empty}>{t("binance.no_balance")}</Text>
                 ) : (
                   balances.slice(0, 10).map((b: any) => (
                     <View key={b.asset} style={styles.balanceRow}>
@@ -274,15 +264,12 @@ export default function BinanceConnectScreen() {
 
               {/* INFO LIVE MODE */}
               <View style={styles.card}>
-                <Text style={styles.sectionTitle}>🚀 Prochaine étape</Text>
+                <Text style={styles.sectionTitle}>{t("binance.next_step_title")}</Text>
                 <Text style={styles.bodyText}>
-                  Va dans l'onglet <Text style={styles.bold}>Bot IA</Text> et active le toggle{" "}
-                  <Text style={[styles.bold, { color: theme.colors.danger }]}>"Mode LIVE"</Text>{" "}
-                  pour que le bot exécute des ordres réels sur Binance.
+                  {t("binance.next_step_desc_part1")}<Text style={styles.bold}>{t("binance.next_step_desc_bot")}</Text>{t("binance.next_step_desc_part2")}<Text style={[styles.bold, { color: theme.colors.danger }]}>{t("binance.next_step_desc_live")}</Text>{t("binance.next_step_desc_part3")}
                 </Text>
                 <Text style={[styles.bodyText, { marginTop: 8, color: theme.colors.textSecondary }]}>
-                  💡 Par défaut, la taille maximale par trade est limitée à <Text style={styles.bold}>$50</Text>{" "}
-                  (modifiable dans les paramètres du bot).
+                  {t("binance.limit_default_part1")}<Text style={styles.bold}>{t("binance.limit_default_amount")}</Text>{t("binance.limit_default_part2")}
                 </Text>
               </View>
 
@@ -296,7 +283,7 @@ export default function BinanceConnectScreen() {
                 ) : (
                   <>
                     <Ionicons name="unlink" size={18} color={theme.colors.danger} />
-                    <Text style={styles.dangerBtnText}>Déconnecter Binance</Text>
+                    <Text style={styles.dangerBtnText}>{t("binance.disconnect_btn")}</Text>
                   </>
                 )}
               </TouchableOpacity>

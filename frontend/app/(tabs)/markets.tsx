@@ -12,11 +12,13 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
+import { useTranslation } from "react-i18next";
 import { theme, fmtPrice, fmtPct, symbolToBase } from "../../src/theme";
 import { api } from "../../src/lib/api";
 
 export default function Markets() {
   const router = useRouter();
+  const { t } = useTranslation();
   const [tickers, setTickers] = useState<any[]>([]);
   const [watch, setWatch] = useState<Set<string>>(new Set());
   const [q, setQ] = useState("");
@@ -86,17 +88,17 @@ export default function Markets() {
   }
 
   const tabs: { key: any; label: string }[] = [
-    { key: "all", label: "Tous" },
-    { key: "gainers", label: "Hausses" },
-    { key: "losers", label: "Baisses" },
-    { key: "watch", label: "Favoris" },
+    { key: "all", label: t("markets.tab_all") },
+    { key: "gainers", label: t("markets.tab_gainers") },
+    { key: "losers", label: t("markets.tab_losers") },
+    { key: "watch", label: t("markets.tab_watch") },
   ];
 
   return (
     <SafeAreaView style={styles.safe} edges={["top"]} testID="markets-screen">
       <View style={styles.header}>
-        <Text style={styles.title}>Marchés</Text>
-        <Text style={styles.subtitle}>Top 20 paires Binance USDT</Text>
+        <Text style={styles.title}>{t("markets.title")}</Text>
+        <Text style={styles.subtitle}>{t("markets.subtitle")}</Text>
       </View>
 
       <View style={styles.searchWrap}>
@@ -104,7 +106,7 @@ export default function Markets() {
         <TextInput
           value={q}
           onChangeText={setQ}
-          placeholder="Rechercher BTC, ETH, SOL..."
+          placeholder={t("markets.search_placeholder")}
           placeholderTextColor={theme.colors.textMuted}
           autoCapitalize="characters"
           style={styles.search}
@@ -134,7 +136,7 @@ export default function Markets() {
         ListEmptyComponent={
           <View style={{ alignItems: "center", paddingVertical: 60 }}>
             <Ionicons name="search-outline" size={32} color={theme.colors.textMuted} />
-            <Text style={{ color: theme.colors.textSecondary, marginTop: 8 }}>Aucune paire trouvée</Text>
+            <Text style={{ color: theme.colors.textSecondary, marginTop: 8 }}>{t("markets.no_results")}</Text>
           </View>
         }
         renderItem={({ item }) => (

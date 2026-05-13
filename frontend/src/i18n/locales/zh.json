@@ -23,7 +23,9 @@
     "free": "免费",
     "premium": "高级",
     "lifetime": "终身",
-    "unlimited": "无限"
+    "unlimited": "无限",
+    "save_btn": "保存",
+    "later": "稍后"
   },
   "auth": {
     "welcome": "欢迎",
@@ -46,7 +48,9 @@
       "email_required": "邮箱必填",
       "password_too_short": "密码太短（最少6字符）",
       "passwords_dont_match": "密码不匹配",
-      "email_exists": "此邮箱已被使用"
+      "email_exists": "此邮箱已被使用",
+      "name_email_pwd_required": "姓名、邮箱和密码(6位以上)为必填项",
+      "register_failed": "注册错误"
     },
     "forgot": {
       "title": "忘记密码？",
@@ -65,7 +69,15 @@
       "code_invalid": "请输入6位数字验证码",
       "success_title": "✅ 密码已修改",
       "success_msg": "你已登录！"
-    }
+    },
+    "hero_buy": "何时买入",
+    "hero_title": "知道<buy/>和何时卖出。",
+    "hero_subtitle": "AI驱动的买入/卖出信号,实时分析币安交易对。几秒钟解读市场。",
+    "disclaimer": "本工具仅提供分析,不构成投资建议。加密货币交易存在风险。",
+    "register_title": "创建您的账户",
+    "register_subtitle": "30秒解锁AI信号。",
+    "create_account_btn": "创建我的账户",
+    "already_registered": "已有账户?"
   },
   "tabs": {
     "home": "首页",
@@ -81,7 +93,16 @@
     "ai_pick_buy": "现在买入？",
     "watchlist": "关注列表",
     "movers": "强势行情",
-    "see_all": "查看全部"
+    "see_all": "查看全部",
+    "cockpit": "您今天的控制面板",
+    "ai_pick_desc": "几秒钟内对任意交易对生成买入/卖出信号。",
+    "run_analysis": "运行分析",
+    "add": "添加 +",
+    "no_favorites": "暂无收藏的加密货币",
+    "add_from_markets": "从市场标签添加交易对以在此跟踪。",
+    "predict_title": "🔮 AI预测",
+    "predict_sub": "24小时/3天/7天顶级机会",
+    "top_volume": "最高成交量"
   },
   "markets": {
     "title": "加密市场",
@@ -89,7 +110,12 @@
     "no_results": "未找到交易对",
     "volume": "成交量",
     "price": "价格",
-    "change_24h": "24小时变动"
+    "change_24h": "24小时变动",
+    "subtitle": "币安前20大USDT交易对",
+    "tab_all": "全部",
+    "tab_gainers": "涨幅榜",
+    "tab_losers": "跌幅榜",
+    "tab_watch": "收藏"
   },
   "bot": {
     "title": "AI机器人",
@@ -117,7 +143,10 @@
       "binance_required": "未连接Binance",
       "binance_required_msg": "请先连接Binance账户才能启用实盘模式。",
       "connect_now": "立即连接",
-      "later": "稍后"
+      "later": "稍后",
+      "live_activated_title": "⚡ 实盘模式已激活",
+      "live_activated_msg": "机器人现在将在币安执行真实订单。\n\n每笔交易限额:${{cap}}。",
+      "enable_live_btn": "启用实盘"
     },
     "killswitch": {
       "title": "自停开关（暂停买入）",
@@ -128,7 +157,46 @@
     "recent_trades": "最新交易",
     "no_positions": "无持仓",
     "no_trades": "暂无交易",
-    "run_now": "立即执行"
+    "run_now": "立即执行",
+    "strategy": {
+      "title": "混合策略",
+      "desc": "机器人每{{interval}}分钟扫描{{count}}个交易对。RSI + EMA指标检测机会,Claude Sonnet 4.5验证不确定交易。止损{{sl}}% · 止盈{{tp}}% · 每笔交易{{pos}}%资金。",
+      "trailing_sl": "移动止损 +{{pct}}%",
+      "compounding": "复利",
+      "ai_predictive": "AI预测"
+    },
+    "scanning": "机器人正在扫描市场…",
+    "activate_to_trade": "激活机器人开始交易",
+    "open_auto": "一旦出现强信号,仓位将自动开启。",
+    "reset_btn": "重置机器人",
+    "reset_confirm_title": "重置机器人?",
+    "reset_confirm_msg": "所有仓位和历史记录将被删除。",
+    "reset_btn_action": "重置",
+    "disclaimer": "🛈 模拟交易模式 — 不执行真实交易。价格为币安实时市场价格。",
+    "labels": {
+      "entry": "入场",
+      "current": "当前",
+      "tp_sl": "止盈/止损",
+      "trade_type": {
+        "tp": "止盈",
+        "sl": "止损"
+      }
+    },
+    "settings": {
+      "title": "机器人配置",
+      "capital": "虚拟资金 (USDT)",
+      "position_size": "仓位大小 %",
+      "max_positions": "最大仓位数",
+      "stop_loss": "止损 %",
+      "take_profit": "止盈 %",
+      "interval": "分析间隔(分钟)",
+      "pairs": "交易对",
+      "save": "保存"
+    },
+    "errors": {
+      "toggle_failed": "无法修改机器人",
+      "enable_live_failed": "无法启用实盘模式"
+    }
   },
   "profile": {
     "title": "个人中心",
@@ -180,7 +248,13 @@
     "paid_success_msg": "所有功能已解锁。",
     "cancelled_payment_title": "支付取消",
     "cancelled_payment_msg": "未扣款，可随时重试。",
-    "legal": "不保证盈利。加密交易风险高。可随时取消订阅。"
+    "legal": "不保证盈利。加密交易风险高。可随时取消订阅。",
+    "price": "€9.99",
+    "cancel_confirm_title": "取消高级会员?",
+    "cancel_confirm_msg": "您将保留访问权限直到付费周期结束。",
+    "cancel_confirm_keep": "保留",
+    "checkout_unavailable": "支付不可用",
+    "checkout_unavailable_msg": "请检查您的连接。如果错误持续,请联系支持。"
   },
   "binance": {
     "title": "Binance 连接",
@@ -208,7 +282,33 @@
     "limit_default": "💡 默认单笔交易上限为$50（可在机器人设置中修改）。",
     "disconnect_btn": "断开Binance连接",
     "disconnect_confirm": "确认断开Binance？",
-    "disconnect_msg": "机器人将自动切换回模拟模式。你可以随时重新连接。"
+    "disconnect_msg": "机器人将自动切换回模拟模式。你可以随时重新连接。",
+    "step_1_part1": "登录到 ",
+    "step_1_brand": "币安",
+    "step_1_part2": " → 个人资料 → API管理",
+    "step_2_part1": "点击 ",
+    "step_2_strong1": "\"创建API\"",
+    "step_2_part2": " → 选择 ",
+    "step_2_strong2": "\"系统生成\"",
+    "step_3_part1": "启用 ",
+    "step_3_strong": "仅",
+    "step_3_part2": ":\n✅ 启用现货和杠杆交易",
+    "step_4_strong": "绝对禁用",
+    "step_4_part": ":\n❌ 启用提现\n❌ 启用统一账户划转",
+    "next_step_desc_part1": "前往 ",
+    "next_step_desc_bot": "AI机器人",
+    "next_step_desc_part2": " 标签并切换 ",
+    "next_step_desc_live": "\"实盘模式\"",
+    "next_step_desc_part3": " 以便机器人在币安执行真实订单。",
+    "limit_default_part1": "💡 默认情况下,每笔交易的最大规模限制为 ",
+    "limit_default_amount": "$50",
+    "limit_default_part2": " (可在机器人设置中配置)。",
+    "invalid_keys_title": "密钥无效",
+    "invalid_keys_msg": "请检查您的币安API密钥。",
+    "success_title": "✅ 币安已连接!",
+    "success_msg": "类型:{{type}}\n允许交易:{{trade}}",
+    "fail_title": "连接失败",
+    "unknown_error": "未知错误"
   },
   "notifications": {
     "title": "通知",
@@ -218,7 +318,8 @@
     "trade_close_gain": "💰 盈利了！",
     "trade_close_loss": "📉 已止损",
     "live_buy": "💸 实盘买入",
-    "live_error": "⚠️ 实盘错误"
+    "live_error": "⚠️ 实盘错误",
+    "empty_sub": "一旦交易开启或关闭,您将收到提醒"
   },
   "languages": {
     "title": "选择语言",
@@ -230,5 +331,95 @@
     "it": "意大利语",
     "pt": "葡萄牙语（巴西）",
     "zh": "中文"
+  },
+  "signals": {
+    "title": "AI信号",
+    "subtitle": "买入/卖出 — Claude Sonnet 4.5实时分析。",
+    "pair": "交易对",
+    "interval": "时间周期",
+    "other_pair": "其他交易对,例如 ARBUSDT",
+    "choose": "选择",
+    "run_ai": "运行AI分析",
+    "confidence": "置信度",
+    "entry": "入场",
+    "target": "目标",
+    "stop_loss": "止损",
+    "horizon_label": "时间范围",
+    "why": "原因",
+    "indicators": "指标",
+    "history": "历史",
+    "gen_error": "无法生成信号",
+    "intervals": {
+      "15m": "15分钟",
+      "1h": "1小时",
+      "4h": "4小时",
+      "1d": "1天"
+    }
+  },
+  "predict": {
+    "title": "AI预测",
+    "subtitle": "AI分析RSI、成交量、波动性和趋势,预测未来价格及置信水平。",
+    "horizon": "时间范围",
+    "horizon_24h": "24小时",
+    "horizon_3d": "3天",
+    "horizon_7d": "7天",
+    "tab_top": "顶级机会",
+    "tab_single": "针对性分析",
+    "analyzing": "Claude正在分析10种加密货币…",
+    "takes_time": "(可能需要20-30秒)",
+    "none": "无可用预测",
+    "predict_btn": "预测 {{sym}}",
+    "confidence_ai": "AI置信度",
+    "low": "低",
+    "median": "中",
+    "high": "高",
+    "recommended_action": "推荐操作",
+    "action_buy": "买入",
+    "action_sell": "卖出",
+    "action_wait": "观望",
+    "key_factors": "关键因素",
+    "analysis": "分析",
+    "disclaimer": "🛈 AI预测不构成投资建议。相信您理解的,而非被承诺的。",
+    "direction_up": "上涨",
+    "direction_down": "下跌",
+    "direction_neutral": "中性",
+    "load_error": "无法加载预测",
+    "cached_age": "📦 已缓存({{min}}分钟)"
+  },
+  "backtest": {
+    "title": "回测",
+    "subtitle": "在币安历史数据上模拟您的机器人策略。无AI调用(快速且免费)。",
+    "period": "周期",
+    "period_7": "7天",
+    "period_14": "14天",
+    "period_30": "30天",
+    "period_60": "60天",
+    "run_btn": "运行模拟",
+    "hint": "模拟使用您当前的机器人参数(资金、止损、止盈、交易对)。",
+    "headline": "如果您在{{days}}天前开始",
+    "in_days": "{{days}}天内{{pct}}%",
+    "capital_start": "起始资金",
+    "capital_end": "最终资金",
+    "equity_curve": "📈 资金演变",
+    "trades": "交易次数",
+    "winrate": "胜率",
+    "wins": "盈利",
+    "losses": "亏损",
+    "avg_win": "平均盈利",
+    "avg_loss": "平均亏损",
+    "best": "🏆 最佳",
+    "worst": "💀 最差",
+    "vs_hodl": "🆚 对比持有",
+    "bot_ai": "AI机器人",
+    "hodl": "买入持有(平均交易对)",
+    "outperf": "超额表现",
+    "recent_trades": "最近模拟交易",
+    "exit_reason": {
+      "tp": "止盈",
+      "sl": "止损",
+      "end": "结束"
+    },
+    "disclaimer": "🛈 过往表现不代表未来结果。模拟中不包含交易费用。",
+    "error": "回测失败"
   }
 }

@@ -23,7 +23,9 @@
     "free": "Gratis",
     "premium": "Premium",
     "lifetime": "De por vida",
-    "unlimited": "Ilimitado"
+    "unlimited": "Ilimitado",
+    "save_btn": "Guardar",
+    "later": "Más tarde"
   },
   "auth": {
     "welcome": "Bienvenido",
@@ -46,7 +48,9 @@
       "email_required": "Email requerido",
       "password_too_short": "Contraseña demasiado corta (mín 6 caracteres)",
       "passwords_dont_match": "Las contraseñas no coinciden",
-      "email_exists": "Este email ya está en uso"
+      "email_exists": "Este email ya está en uso",
+      "name_email_pwd_required": "Se requieren nombre, email y contraseña (6+ caracteres)",
+      "register_failed": "Error de registro"
     },
     "forgot": {
       "title": "¿Olvidaste tu contraseña?",
@@ -65,7 +69,15 @@
       "code_invalid": "Introduce el código de 6 dígitos",
       "success_title": "✅ Contraseña cambiada",
       "success_msg": "¡Ya estás conectado!"
-    }
+    },
+    "hero_buy": "cuándo comprar",
+    "hero_title": "Sabe <buy/> y cuándo vender.",
+    "hero_subtitle": "Señales de compra/venta impulsadas por IA, en tiempo real en pares de Binance. Decodifica el mercado en segundos.",
+    "disclaimer": "Esta herramienta proporciona análisis, no asesoramiento financiero. El trading de criptomonedas conlleva riesgo.",
+    "register_title": "Crea tu cuenta",
+    "register_subtitle": "30 segundos para desbloquear señales de IA.",
+    "create_account_btn": "Crear mi cuenta",
+    "already_registered": "¿Ya registrado?"
   },
   "tabs": {
     "home": "Inicio",
@@ -81,7 +93,16 @@
     "ai_pick_buy": "¿Comprar ahora?",
     "watchlist": "Watchlist",
     "movers": "Movimientos fuertes",
-    "see_all": "Ver todo"
+    "see_all": "Ver todo",
+    "cockpit": "Tu panel para hoy",
+    "ai_pick_desc": "Genera una señal de compra/venta en cualquier par en segundos.",
+    "run_analysis": "Ejecutar análisis",
+    "add": "Añadir +",
+    "no_favorites": "Aún no hay criptomonedas favoritas",
+    "add_from_markets": "Añade pares desde la pestaña Mercados para rastrearlos aquí.",
+    "predict_title": "🔮 Predicciones IA",
+    "predict_sub": "Mejores oportunidades 24h / 3D / 7D",
+    "top_volume": "Mayor volumen"
   },
   "markets": {
     "title": "Mercados crypto",
@@ -89,7 +110,12 @@
     "no_results": "No se encontró par",
     "volume": "Volumen",
     "price": "Precio",
-    "change_24h": "Cambio 24h"
+    "change_24h": "Cambio 24h",
+    "subtitle": "Top 20 pares USDT de Binance",
+    "tab_all": "Todos",
+    "tab_gainers": "Ganadores",
+    "tab_losers": "Perdedores",
+    "tab_watch": "Favoritos"
   },
   "bot": {
     "title": "Bot IA",
@@ -117,7 +143,10 @@
       "binance_required": "Binance no conectado",
       "binance_required_msg": "Primero conecta tu cuenta Binance antes de activar el modo Live.",
       "connect_now": "Conectar ahora",
-      "later": "Más tarde"
+      "later": "Más tarde",
+      "live_activated_title": "⚡ Modo LIVE activado",
+      "live_activated_msg": "El bot ahora ejecutará órdenes REALES en Binance.\n\nLímite por operación: ${{cap}}.",
+      "enable_live_btn": "Activar Live"
     },
     "killswitch": {
       "title": "Kill-switch (pausa compras)",
@@ -128,7 +157,46 @@
     "recent_trades": "Trades recientes",
     "no_positions": "Sin posiciones abiertas",
     "no_trades": "Sin trades aún",
-    "run_now": "Ejecutar ciclo"
+    "run_now": "Ejecutar ciclo",
+    "strategy": {
+      "title": "Estrategia híbrida",
+      "desc": "El bot escanea {{count}} pares cada {{interval}} min. Los indicadores RSI + EMA detectan oportunidades, Claude Sonnet 4.5 valida operaciones inciertas. Stop-loss {{sl}}% · Take-profit {{tp}}% · {{pos}}% capital/operación.",
+      "trailing_sl": "SL dinámico +{{pct}}%",
+      "compounding": "Capitalización",
+      "ai_predictive": "IA Predictiva"
+    },
+    "scanning": "El bot está escaneando el mercado…",
+    "activate_to_trade": "Activa el bot para comenzar a operar",
+    "open_auto": "Las posiciones se abrirán automáticamente tan pronto como aparezca una señal fuerte.",
+    "reset_btn": "Reiniciar bot",
+    "reset_confirm_title": "¿Reiniciar el bot?",
+    "reset_confirm_msg": "Todas las posiciones e historial serán eliminados.",
+    "reset_btn_action": "Reiniciar",
+    "disclaimer": "🛈 Modo Paper Trading — no se ejecuta ninguna transacción real. Los precios son del mercado de Binance en tiempo real.",
+    "labels": {
+      "entry": "ENTRADA",
+      "current": "ACTUAL",
+      "tp_sl": "TP / SL",
+      "trade_type": {
+        "tp": "TP",
+        "sl": "SL"
+      }
+    },
+    "settings": {
+      "title": "Configuración del bot",
+      "capital": "CAPITAL VIRTUAL (USDT)",
+      "position_size": "TAMAÑO DE POSICIÓN %",
+      "max_positions": "POSICIONES MÁXIMAS",
+      "stop_loss": "STOP-LOSS %",
+      "take_profit": "TAKE-PROFIT %",
+      "interval": "INTERVALO DE ANÁLISIS (MIN)",
+      "pairs": "PARES PARA OPERAR",
+      "save": "Guardar"
+    },
+    "errors": {
+      "toggle_failed": "No se pudo modificar el bot",
+      "enable_live_failed": "No se pudo activar el modo Live"
+    }
   },
   "profile": {
     "title": "Perfil",
@@ -180,7 +248,13 @@
     "paid_success_msg": "Todas las funciones desbloqueadas.",
     "cancelled_payment_title": "Pago cancelado",
     "cancelled_payment_msg": "No se ha cobrado nada. Puedes intentar de nuevo en cualquier momento.",
-    "legal": "Sin garantía de ganancias. El trading crypto conlleva riesgos altos. Puedes darte de baja en cualquier momento desde esta pantalla."
+    "legal": "Sin garantía de ganancias. El trading crypto conlleva riesgos altos. Puedes darte de baja en cualquier momento desde esta pantalla.",
+    "price": "€9.99",
+    "cancel_confirm_title": "¿Cancelar Premium?",
+    "cancel_confirm_msg": "Mantendrás el acceso hasta el final del período pagado.",
+    "cancel_confirm_keep": "Mantener",
+    "checkout_unavailable": "Pago no disponible",
+    "checkout_unavailable_msg": "Verifica tu conexión. Si el error persiste, contacta con soporte."
   },
   "binance": {
     "title": "Conexión Binance",
@@ -208,7 +282,33 @@
     "limit_default": "💡 Por defecto, el tamaño máximo por trade es $50 (modificable en ajustes del bot).",
     "disconnect_btn": "Desconectar Binance",
     "disconnect_confirm": "¿Desconectar Binance?",
-    "disconnect_msg": "El bot volverá a modo Paper. Puedes reconectar cuando quieras."
+    "disconnect_msg": "El bot volverá a modo Paper. Puedes reconectar cuando quieras.",
+    "step_1_part1": "Inicia sesión en ",
+    "step_1_brand": "Binance",
+    "step_1_part2": " → Perfil → Gestión de API",
+    "step_2_part1": "Haz clic en ",
+    "step_2_strong1": "\"Crear API\"",
+    "step_2_part2": " → elige ",
+    "step_2_strong2": "\"Generada por el sistema\"",
+    "step_3_part1": "Habilita ",
+    "step_3_strong": "SOLO",
+    "step_3_part2": ":\n✅ Habilitar Trading Spot y Margen",
+    "step_4_strong": "DESHABILITA absolutamente",
+    "step_4_part": ":\n❌ Habilitar Retiros\n❌ Habilitar Transferencia Universal",
+    "next_step_desc_part1": "Ve a la pestaña ",
+    "next_step_desc_bot": "Bot IA",
+    "next_step_desc_part2": " y activa ",
+    "next_step_desc_live": "\"modo LIVE\"",
+    "next_step_desc_part3": " para que el bot ejecute órdenes reales en Binance.",
+    "limit_default_part1": "💡 Por defecto, el tamaño máximo por operación está limitado a ",
+    "limit_default_amount": "$50",
+    "limit_default_part2": " (configurable en ajustes del bot).",
+    "invalid_keys_title": "Claves inválidas",
+    "invalid_keys_msg": "Verifica tus claves API de Binance.",
+    "success_title": "✅ ¡Binance conectado!",
+    "success_msg": "Tipo: {{type}}\nTrading permitido: {{trade}}",
+    "fail_title": "Conexión fallida",
+    "unknown_error": "Error desconocido"
   },
   "notifications": {
     "title": "Notificaciones",
@@ -218,7 +318,8 @@
     "trade_close_gain": "💰 Ganancia realizada!",
     "trade_close_loss": "📉 Pérdida cerrada",
     "live_buy": "💸 Compra LIVE",
-    "live_error": "⚠️ Error LIVE"
+    "live_error": "⚠️ Error LIVE",
+    "empty_sub": "Serás alertado tan pronto como se abra o cierre una operación"
   },
   "languages": {
     "title": "Elige tu idioma",
@@ -230,5 +331,95 @@
     "it": "Italiano",
     "pt": "Português (BR)",
     "zh": "中文"
+  },
+  "signals": {
+    "title": "Señales IA",
+    "subtitle": "Compra / venta — Análisis en tiempo real de Claude Sonnet 4.5.",
+    "pair": "PAR",
+    "interval": "INTERVALO",
+    "other_pair": "Otro par ej. ARBUSDT",
+    "choose": "Seleccionar",
+    "run_ai": "Ejecutar análisis IA",
+    "confidence": "Confianza",
+    "entry": "ENTRADA",
+    "target": "OBJETIVO",
+    "stop_loss": "STOP-LOSS",
+    "horizon_label": "Horizonte",
+    "why": "POR QUÉ",
+    "indicators": "Indicadores",
+    "history": "Historial",
+    "gen_error": "No se pudo generar la señal",
+    "intervals": {
+      "15m": "15m",
+      "1h": "1h",
+      "4h": "4h",
+      "1d": "1D"
+    }
+  },
+  "predict": {
+    "title": "Predicciones IA",
+    "subtitle": "La IA analiza RSI, volumen, volatilidad y tendencia para predecir precios futuros con nivel de confianza.",
+    "horizon": "HORIZONTE",
+    "horizon_24h": "24h",
+    "horizon_3d": "3 días",
+    "horizon_7d": "7 días",
+    "tab_top": "Mejores oportunidades",
+    "tab_single": "Análisis dirigido",
+    "analyzing": "Claude analizando 10 criptomonedas…",
+    "takes_time": "(puede tardar 20-30 segundos)",
+    "none": "No hay predicción disponible",
+    "predict_btn": "Predecir {{sym}}",
+    "confidence_ai": "Confianza IA",
+    "low": "BAJO",
+    "median": "MEDIO",
+    "high": "ALTO",
+    "recommended_action": "Acción recomendada",
+    "action_buy": "COMPRAR",
+    "action_sell": "VENDER",
+    "action_wait": "ESPERAR",
+    "key_factors": "FACTORES CLAVE",
+    "analysis": "ANÁLISIS",
+    "disclaimer": "🛈 Las predicciones de IA no son asesoramiento financiero. Confía en lo que entiendes, no en lo que te prometen.",
+    "direction_up": "SUBE",
+    "direction_down": "BAJA",
+    "direction_neutral": "NEUTRAL",
+    "load_error": "No se pudieron cargar las predicciones",
+    "cached_age": "📦 en caché ({{min}}min)"
+  },
+  "backtest": {
+    "title": "Backtest",
+    "subtitle": "Simula la estrategia de tu bot con datos históricos de Binance. Sin llamadas IA (rápido y gratis).",
+    "period": "PERÍODO",
+    "period_7": "7D",
+    "period_14": "14D",
+    "period_30": "30D",
+    "period_60": "60D",
+    "run_btn": "Ejecutar simulación",
+    "hint": "La simulación usa tus parámetros actuales del bot (capital, SL, TP, pares).",
+    "headline": "SI HUBIERAS COMENZADO HACE {{days}} DÍAS",
+    "in_days": "{{pct}}% en {{days}} días",
+    "capital_start": "Capital inicial",
+    "capital_end": "Capital final",
+    "equity_curve": "📈 Evolución del capital",
+    "trades": "OPERACIONES",
+    "winrate": "TASA DE ÉXITO",
+    "wins": "GANANCIAS",
+    "losses": "PÉRDIDAS",
+    "avg_win": "GANANCIA MEDIA",
+    "avg_loss": "PÉRDIDA MEDIA",
+    "best": "🏆 MEJOR",
+    "worst": "💀 PEOR",
+    "vs_hodl": "🆚 Vs. Comprar y mantener",
+    "bot_ai": "Bot IA",
+    "hodl": "Comprar y mantener (media pares)",
+    "outperf": "Sobrerendimiento",
+    "recent_trades": "Operaciones simuladas recientes",
+    "exit_reason": {
+      "tp": "TP",
+      "sl": "SL",
+      "end": "Fin"
+    },
+    "disclaimer": "🛈 El rendimiento pasado no garantiza resultados futuros. Las comisiones de trading no están incluidas en la simulación.",
+    "error": "Backtest fallido"
   }
 }

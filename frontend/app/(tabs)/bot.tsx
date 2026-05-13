@@ -78,7 +78,7 @@ export default function Bot() {
       setCfg(updated);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     } catch (e: any) {
-      Alert.alert("Erreur", e.message || "Impossible de modifier le bot");
+      Alert.alert(t("common.error"), e.message || t("bot.errors.toggle_failed"));
     } finally {
       setSavingToggle(false);
     }
@@ -91,7 +91,7 @@ export default function Bot() {
         const updated = await api.botUpdateConfig({ live_mode: false });
         setCfg(updated);
       } catch (e: any) {
-        Alert.alert("Erreur", e.message);
+        Alert.alert(t("common.error"), e.message);
       }
       return;
     }
@@ -103,11 +103,11 @@ export default function Bot() {
     } catch {}
     if (!connected) {
       Alert.alert(
-        "Binance non connecté",
-        "Tu dois d'abord connecter ton compte Binance avant d'activer le mode Live.",
+        t("bot.mode.binance_required"),
+        t("bot.mode.binance_required_msg"),
         [
-          { text: "Plus tard", style: "cancel" },
-          { text: "Connecter maintenant", onPress: () => router.push("/binance-connect") },
+          { text: t("bot.mode.later"), style: "cancel" },
+          { text: t("bot.mode.connect_now"), onPress: () => router.push("/binance-connect") },
         ]
       );
       return;
@@ -118,28 +118,26 @@ export default function Bot() {
         const updated = await api.botUpdateConfig({ live_mode: true });
         setCfg(updated);
         Alert.alert(
-          "⚡ Mode LIVE activé",
-          `Le bot va maintenant exécuter de VRAIS ordres sur Binance.\n\nLimite par trade : $${updated.live_max_position_usdt || 50}.`
+          t("bot.mode.live_activated_title"),
+          t("bot.mode.live_activated_msg", { cap: updated.live_max_position_usdt || 50 })
         );
       } catch (e: any) {
-        Alert.alert("Erreur", e.message || "Impossible d'activer le mode Live");
+        Alert.alert(t("common.error"), e.message || t("bot.errors.enable_live_failed"));
       }
     };
     if (Platform.OS === "web") {
       const ok =
         typeof window !== "undefined" &&
-        window.confirm(
-          "⚠️ ATTENTION : Mode LIVE\n\nLe bot va passer en trading RÉEL avec de l'argent VRAI sur Binance.\n\nConfirmer l'activation ?"
-        );
+        window.confirm(t("bot.mode.confirm_live") + "\n\n" + t("bot.mode.confirm_live_msg"));
       if (ok) doEnable();
       return;
     }
     Alert.alert(
-      "⚠️ Activer le mode LIVE ?",
-      "Le bot va passer en trading RÉEL avec de l'argent VRAI sur Binance. Tu peux désactiver à tout moment.",
+      t("bot.mode.confirm_live"),
+      t("bot.mode.confirm_live_msg"),
       [
-        { text: "Annuler", style: "cancel" },
-        { text: "Activer Live", style: "destructive", onPress: doEnable },
+        { text: t("common.cancel"), style: "cancel" },
+        { text: t("bot.mode.enable_live_btn"), style: "destructive", onPress: doEnable },
       ]
     );
   };
@@ -150,7 +148,7 @@ export default function Bot() {
       setCfg(updated);
       if (val) Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
     } catch (e: any) {
-      Alert.alert("Erreur", e.message);
+      Alert.alert(t("common.error"), e.message);
     }
   };
 
@@ -160,19 +158,19 @@ export default function Bot() {
       await load();
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     } catch (e: any) {
-      Alert.alert("Erreur", e.message);
+      Alert.alert(t("common.error"), e.message);
     }
   };
 
   const onReset = () => {
     if (Platform.OS === "web") {
-      const ok = typeof window !== "undefined" && window.confirm("Réinitialiser le bot ? Toutes les positions et l'historique seront supprimés.");
+      const ok = typeof window !== "undefined" && window.confirm(t("bot.reset_confirm_title") + " " + t("bot.reset_confirm_msg"));
       if (ok) doReset();
       return;
     }
-    Alert.alert("Réinitialiser le bot", "Toutes les positions et l'historique seront supprimés.", [
-      { text: "Annuler" },
-      { text: "Réinitialiser", style: "destructive", onPress: doReset },
+    Alert.alert(t("bot.reset_confirm_title"), t("bot.reset_confirm_msg"), [
+      { text: t("common.cancel") },
+      { text: t("bot.reset_btn_action"), style: "destructive", onPress: doReset },
     ]);
   };
 
@@ -185,7 +183,7 @@ export default function Bot() {
       await load();
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     } catch (e: any) {
-      Alert.alert("Erreur", e.message);
+      Alert.alert(t("common.error"), e.message);
     } finally {
       setScanning(false);
     }
@@ -280,14 +278,14 @@ export default function Bot() {
                     color={cfg.live_mode ? theme.colors.danger : theme.colors.primary}
                   />
                   <Text style={[styles.modeBadgeText, { color: cfg.live_mode ? theme.colors.danger : theme.colors.primary }]}>
-                    {cfg.live_mode ? "MODE LIVE — ARGENT RÉEL" : "MODE PAPER — SIMULATION"}
+                    {cfg.live_mode ? t("bot.mode.live") : t("bot.mode.paper")}
                   </Text>
                 </View>
               </View>
               <Text style={styles.modeDesc}>
                 {cfg.live_mode
-                  ? `Le bot exécute de vrais ordres sur Binance. Limite: $${cfg.live_max_position_usdt || 50}/trade.`
-                  : "Aucun ordre réel. Les performances utilisent un capital fictif."}
+                  ? t("bot.mode.live_desc", { cap: cfg.live_max_position_usdt || 50 })
+                  : t("bot.mode.paper_desc")}
               </Text>
             </View>
             <Switch
@@ -302,12 +300,8 @@ export default function Bot() {
             <View style={styles.killRow}>
               <Ionicons name="warning" size={16} color={cfg.live_killswitch ? theme.colors.danger : theme.colors.textSecondary} />
               <View style={{ flex: 1 }}>
-                <Text style={styles.killTitle}>Kill-switch (pause des achats)</Text>
-                <Text style={styles.killSub}>
-                  {cfg.live_killswitch
-                    ? "Aucun nouvel achat. Le bot ne fait QUE clôturer les positions ouvertes."
-                    : "Désactive instantanément les nouveaux achats si besoin."}
-                </Text>
+                <Text style={styles.killTitle}>{t("bot.killswitch.title")}</Text>
+                <Text style={styles.killSub}>{cfg.live_killswitch ? t("bot.killswitch.on_desc") : t("bot.killswitch.off_desc")}</Text>
               </View>
               <Switch
                 value={!!cfg.live_killswitch}
@@ -323,30 +317,28 @@ export default function Bot() {
         <View style={styles.stratCard}>
           <View style={styles.stratHead}>
             <Ionicons name="sparkles" size={14} color={theme.colors.primary} />
-            <Text style={styles.stratTitle}>Stratégie hybride</Text>
+            <Text style={styles.stratTitle}>{t("bot.strategy.title")}</Text>
           </View>
           <Text style={styles.stratText}>
-            Le bot scanne {cfg.pairs?.length || 5} paires toutes les {cfg.interval_minutes} min.
-            Indicateurs RSI + EMA détectent les opportunités, Claude Sonnet 4.5 valide les trades incertains.
-            Stop-loss {cfg.stop_loss_pct}% · Take-profit {cfg.take_profit_pct}% · {cfg.position_size_pct}% capital/trade.
+            {t("bot.strategy.desc", { count: cfg.pairs?.length || 5, interval: cfg.interval_minutes, sl: cfg.stop_loss_pct, tp: cfg.take_profit_pct, pos: cfg.position_size_pct })}
           </Text>
           <View style={styles.boostsRow}>
             {cfg.trailing_enabled && (
               <View style={styles.boost}>
                 <Ionicons name="shield-checkmark" size={11} color={theme.colors.buy} />
-                <Text style={styles.boostText}>Trailing SL +{cfg.trailing_trigger_pct}%</Text>
+                <Text style={styles.boostText}>{t("bot.strategy.trailing_sl", { pct: cfg.trailing_trigger_pct })}</Text>
               </View>
             )}
             {cfg.compounding_enabled && (
               <View style={styles.boost}>
                 <Ionicons name="trending-up" size={11} color={theme.colors.buy} />
-                <Text style={styles.boostText}>Compounding</Text>
+                <Text style={styles.boostText}>{t("bot.strategy.compounding")}</Text>
               </View>
             )}
             {cfg.ai_predictions_enabled && (
               <View style={styles.boost}>
                 <Ionicons name="telescope" size={11} color={theme.colors.buy} />
-                <Text style={styles.boostText}>IA Prédictive</Text>
+                <Text style={styles.boostText}>{t("bot.strategy.ai_predictive")}</Text>
               </View>
             )}
           </View>
@@ -354,14 +346,14 @@ export default function Bot() {
 
         {/* Open positions */}
         <View style={styles.sectionHead}>
-          <Text style={styles.sectionTitle}>Positions ouvertes</Text>
+          <Text style={styles.sectionTitle}>{t("bot.open_positions")}</Text>
           <Text style={styles.muted}>{positions.length}</Text>
         </View>
         {positions.length === 0 ? (
           <View style={styles.emptyCard}>
             <Ionicons name="hourglass-outline" size={28} color={theme.colors.textMuted} />
-            <Text style={styles.emptyT}>{cfg.enabled ? "Le bot scrute le marché..." : "Active le bot pour qu'il commence à trader"}</Text>
-            <Text style={styles.emptyS}>Les positions s&apos;ouvriront automatiquement dès qu&apos;un signal fort apparaît.</Text>
+            <Text style={styles.emptyT}>{cfg.enabled ? t("bot.scanning") : t("bot.activate_to_trade")}</Text>
+            <Text style={styles.emptyS}>{t("bot.open_auto")}</Text>
           </View>
         ) : (
           <View style={{ gap: 10 }}>
@@ -391,15 +383,15 @@ export default function Bot() {
                 </View>
                 <View style={styles.posGrid}>
                   <View style={styles.posMetric}>
-                    <Text style={styles.metricL}>ENTRÉE</Text>
+                    <Text style={styles.metricL}>{t("bot.labels.entry")}</Text>
                     <Text style={styles.metricV}>${fmtPrice(p.entry_price)}</Text>
                   </View>
                   <View style={styles.posMetric}>
-                    <Text style={styles.metricL}>ACTUEL</Text>
+                    <Text style={styles.metricL}>{t("bot.labels.current")}</Text>
                     <Text style={styles.metricV}>${fmtPrice(p.current_price)}</Text>
                   </View>
                   <View style={styles.posMetric}>
-                    <Text style={styles.metricL}>TP / SL</Text>
+                    <Text style={styles.metricL}>{t("bot.labels.tp_sl")}</Text>
                     <Text style={styles.metricV}>
                       <Text style={{ color: theme.colors.buy }}>${fmtPrice(p.take_profit)}</Text>
                     </Text>
@@ -416,11 +408,11 @@ export default function Bot() {
 
         {/* History */}
         <View style={styles.sectionHead}>
-          <Text style={styles.sectionTitle}>Historique des trades</Text>
+          <Text style={styles.sectionTitle}>{t("bot.recent_trades")}</Text>
           <Text style={styles.muted}>{trades.length}</Text>
         </View>
         {trades.length === 0 ? (
-          <Text style={styles.emptyHist}>Aucun trade clôturé pour le moment.</Text>
+          <Text style={styles.emptyHist}>{t("bot.no_trades")}</Text>
         ) : (
           <View style={{ gap: 8 }}>
             {trades.slice(0, 20).map((t) => (
@@ -452,13 +444,10 @@ export default function Bot() {
 
         <TouchableOpacity onPress={onReset} style={styles.resetBtn} testID="bot-reset-btn">
           <Ionicons name="refresh" size={16} color={theme.colors.danger} />
-          <Text style={styles.resetText}>Réinitialiser le bot</Text>
+          <Text style={styles.resetText}>{t("bot.reset_btn")}</Text>
         </TouchableOpacity>
 
-        <Text style={styles.disclaimer}>
-          🛈 Mode Paper Trading — aucune transaction réelle n&apos;est exécutée. Les prix utilisés sont
-          ceux du marché Binance en temps réel.
-        </Text>
+        <Text style={styles.disclaimer}>{t("bot.disclaimer")}</Text>
       </ScrollView>
 
       <SettingsSheet open={settingsOpen} onClose={() => setSettingsOpen(false)} cfg={cfg} onUpdated={(c) => setCfg(c)} />
@@ -467,6 +456,7 @@ export default function Bot() {
 }
 
 function SettingsSheet({ open, onClose, cfg, onUpdated }: any) {
+  const { t } = useTranslation();
   const [capital, setCapital] = useState(String(cfg.capital_usdt));
   const [posSize, setPosSize] = useState(String(cfg.position_size_pct));
   const [maxPos, setMaxPos] = useState(String(cfg.max_positions));
@@ -507,7 +497,7 @@ function SettingsSheet({ open, onClose, cfg, onUpdated }: any) {
       onUpdated(updated);
       onClose();
     } catch (e: any) {
-      Alert.alert("Erreur", e.message);
+      Alert.alert(t("common.error"), e.message);
     } finally {
       setSaving(false);
     }
@@ -520,37 +510,37 @@ function SettingsSheet({ open, onClose, cfg, onUpdated }: any) {
         <View style={styles.sheet}>
           <View style={styles.handle} />
           <ScrollView showsVerticalScrollIndicator={false}>
-            <Text style={styles.sheetTitle}>Configuration du bot</Text>
+            <Text style={styles.sheetTitle}>{t("bot.settings.title")}</Text>
 
-            <Text style={styles.lbl}>CAPITAL VIRTUEL (USDT)</Text>
+            <Text style={styles.lbl}>{t("bot.settings.capital")}</Text>
             <TextInput value={capital} onChangeText={setCapital} keyboardType="decimal-pad" style={styles.input} testID="bot-capital-input" />
 
             <View style={styles.grid2}>
               <View style={{ flex: 1 }}>
-                <Text style={styles.lbl}>TAILLE POSITION %</Text>
+                <Text style={styles.lbl}>{t("bot.settings.position_size")}</Text>
                 <TextInput value={posSize} onChangeText={setPosSize} keyboardType="decimal-pad" style={styles.input} testID="bot-possize-input" />
               </View>
               <View style={{ flex: 1 }}>
-                <Text style={styles.lbl}>MAX POSITIONS</Text>
+                <Text style={styles.lbl}>{t("bot.settings.max_positions")}</Text>
                 <TextInput value={maxPos} onChangeText={setMaxPos} keyboardType="number-pad" style={styles.input} testID="bot-maxpos-input" />
               </View>
             </View>
 
             <View style={styles.grid2}>
               <View style={{ flex: 1 }}>
-                <Text style={styles.lbl}>STOP-LOSS %</Text>
+                <Text style={styles.lbl}>{t("bot.settings.stop_loss")}</Text>
                 <TextInput value={sl} onChangeText={setSl} keyboardType="decimal-pad" style={styles.input} testID="bot-sl-input" />
               </View>
               <View style={{ flex: 1 }}>
-                <Text style={styles.lbl}>TAKE-PROFIT %</Text>
+                <Text style={styles.lbl}>{t("bot.settings.take_profit")}</Text>
                 <TextInput value={tp} onChangeText={setTp} keyboardType="decimal-pad" style={styles.input} testID="bot-tp-input" />
               </View>
             </View>
 
-            <Text style={styles.lbl}>INTERVALLE D&apos;ANALYSE (MIN)</Text>
+            <Text style={styles.lbl}>{t("bot.settings.interval")}</Text>
             <TextInput value={interval} onChangeText={setIntervalV} keyboardType="number-pad" style={styles.input} testID="bot-interval-input" />
 
-            <Text style={styles.lbl}>PAIRES À TRADER</Text>
+            <Text style={styles.lbl}>{t("bot.settings.pairs")}</Text>
             <View style={styles.pairs}>
               {ALL_PAIRS.map((p) => (
                 <TouchableOpacity
@@ -565,7 +555,7 @@ function SettingsSheet({ open, onClose, cfg, onUpdated }: any) {
             </View>
 
             <TouchableOpacity onPress={save} disabled={saving} style={[styles.cta, saving && { opacity: 0.7 }]} testID="bot-save-btn">
-              {saving ? <ActivityIndicator color="#000" /> : <Text style={styles.ctaText}>Enregistrer</Text>}
+              {saving ? <ActivityIndicator color="#000" /> : <Text style={styles.ctaText}>{t("bot.settings.save")}</Text>}
             </TouchableOpacity>
             <View style={{ height: 30 }} />
           </ScrollView>

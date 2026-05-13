@@ -135,7 +135,7 @@ export default function Dashboard() {
         <View style={styles.header}>
           <View>
             <Text style={styles.greeting}>{t("home.greeting", { name: user?.name?.split(" ")[0] || "trader" })}</Text>
-            <Text style={styles.headerSub}>Voici ton cockpit du jour</Text>
+            <Text style={styles.headerSub}>{t("home.cockpit")}</Text>
           </View>
           <View style={{ flexDirection: "row", gap: 8 }}>
             <NotifBell />
@@ -164,11 +164,9 @@ export default function Dashboard() {
               <Text style={styles.aiPillText}>CLAUDE SONNET 4.5</Text>
             </View>
             <Text style={styles.aiTitle}>{t("home.ai_pick_buy")}</Text>
-            <Text style={styles.aiSubtitle}>
-              Génère un signal d&apos;achat / vente sur n&apos;importe quelle paire en quelques secondes.
-            </Text>
+            <Text style={styles.aiSubtitle}>{t("home.ai_pick_desc")}</Text>
             <View style={styles.aiCta}>
-              <Text style={styles.aiCtaText}>Lancer l&apos;analyse</Text>
+              <Text style={styles.aiCtaText}>{t("home.run_analysis")}</Text>
               <Ionicons name="arrow-forward" size={14} color={theme.colors.primary} />
             </View>
           </View>
@@ -186,8 +184,8 @@ export default function Dashboard() {
               <Ionicons name="telescope" size={20} color={theme.colors.primary} />
             </View>
             <View>
-              <Text style={styles.predictTitle}>🔮 Prédictions IA</Text>
-              <Text style={styles.predictSub}>Top opportunités 24h / 3J / 7J</Text>
+              <Text style={styles.predictTitle}>{t("home.predict_title")}</Text>
+              <Text style={styles.predictSub}>{t("home.predict_sub")}</Text>
             </View>
           </View>
           <Ionicons name="chevron-forward" color={theme.colors.textMuted} size={20} />
@@ -197,17 +195,15 @@ export default function Dashboard() {
         <View style={styles.sectionHead}>
           <Text style={styles.sectionTitle}>{t("home.watchlist")}</Text>
           <TouchableOpacity onPress={() => router.push("/(tabs)/markets")} testID="watchlist-add-btn">
-            <Text style={styles.linkText}>Ajouter +</Text>
+            <Text style={styles.linkText}>{t("home.add")}</Text>
           </TouchableOpacity>
         </View>
 
         {watchTickers.length === 0 ? (
           <View style={styles.emptyCard}>
             <Ionicons name="star-outline" color={theme.colors.textMuted} size={28} />
-            <Text style={styles.emptyText}>Aucune crypto en favoris</Text>
-            <Text style={styles.emptySub}>
-              Ajoute des paires depuis l&apos;onglet Marchés pour les suivre ici.
-            </Text>
+            <Text style={styles.emptyText}>{t("home.no_favorites")}</Text>
+            <Text style={styles.emptySub}>{t("home.add_from_markets")}</Text>
           </View>
         ) : (
           <ScrollView
@@ -293,7 +289,7 @@ export default function Dashboard() {
 
         {/* Top by volume - list */}
         <View style={styles.sectionHead}>
-          <Text style={styles.sectionTitle}>Top volume</Text>
+          <Text style={styles.sectionTitle}>{t("home.top_volume")}</Text>
           <Text style={styles.labelMuted}>USDT</Text>
         </View>
         <View style={styles.list}>

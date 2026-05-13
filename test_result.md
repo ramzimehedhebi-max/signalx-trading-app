@@ -416,3 +416,33 @@ agent_communication:
             returns {unread: N} (not {count: N}). Both have been this shape since v1.0.
 
         Backend logs: clean, no 500s. Stripe API call succeeded (response_code=200). No code changes made.
+
+    - agent: "main"
+      message: |
+        i18n ROLLOUT COMPLETE across all frontend screens (purely frontend; no backend changes).
+        Files updated to use useTranslation()/t() instead of hardcoded French text:
+          - /app/frontend/app/(auth)/welcome.tsx (hero title with rich-text <buy/> token, subtitle, disclaimer)
+          - /app/frontend/app/(auth)/login.tsx (was already partially done — kept)
+          - /app/frontend/app/(auth)/register.tsx (full rewrite with t())
+          - /app/frontend/app/(tabs)/index.tsx (dashboard greeting, cockpit subtitle, AI pick desc, predict CTA, watchlist, top movers, top volume)
+          - /app/frontend/app/(tabs)/markets.tsx (title/subtitle, search placeholder, 4 tabs: All/Gainers/Losers/Favorites, empty state)
+          - /app/frontend/app/(tabs)/signals.tsx (title/subtitle, PAIR/INTERVAL labels, intervals 15m/1h/4h/1d, custom pair input, run AI btn, signal result labels ENTRY/TARGET/SL/Horizon/WHY/Indicators/History, alerts)
+          - /app/frontend/app/(tabs)/bot.tsx (mode badges Paper/Live with descriptions, killswitch, strategy hybrid section with interpolated values, open positions, trades history, reset btn, all alerts incl. confirm live, SettingsSheet form labels)
+          - /app/frontend/app/predict.tsx (title/subtitle, HORIZON tabs 24h/3d/7d, tab_top/tab_single, analyzing/takes_time/none, prediction card labels: confidence_ai, low/median/high, recommended_action with BUY/SELL/WAIT, key_factors, analysis, disclaimer, cached_age, direction up/down/neutral)
+          - /app/frontend/app/backtest.tsx (title/subtitle, period 7/14/30/60, run btn, hint, result headline+pct_in_days, capital_start/end, equity curve, stat boxes TRADES/WINRATE/WINS/LOSSES/AVG_WIN/AVG_LOSS, BEST/WORST, vs_hodl/bot_ai/hodl/outperf, recent_trades, exit_reason TP/SL/End, disclaimer, error)
+          - /app/frontend/app/premium.tsx (title, banners paid_pending/paid_success/cancelled_payment, hero labels active/inactive/lifetime, price + per_month, lifetime_subtitle, renewal_on/access_until, FEATURE_KEYS-based feature list, cta_subscribe, cta_note, stripe_not_ready, cancel_subscription, will_cancel, cancel_confirm dialog, legal)
+          - /app/frontend/app/binance-connect.tsx (title, hero status_connected/disconnected, trading_active/paper_only, balance, how_to title + 4 steps with bold inserts via split keys, form_title + api_key/api_secret + placeholder, connect_btn, encryption_note, balances + no_balance, next_step with 3-segment split, limit_default split, disconnect_btn + confirm dialog, success/fail alerts with type/trade interpolation)
+          - /app/frontend/app/notifications.tsx (title + empty + empty_sub)
+
+        Locale files extended:
+          - /app/frontend/src/i18n/locales/en.json — extended to 362 keys (canonical source)
+          - /app/frontend/src/i18n/locales/fr.json — extended to 362 keys (manual translation)
+          - ar/es/de/it/pt/zh.json — auto-translated via Claude Sonnet 4.5 (Emergent LLM key) using
+            /app/scripts/translate_i18n.py. Each now has 369 keys (preserves existing + adds missing).
+            Placeholders ({{name}}, {{date}}, {{cap}}, …) and <buy/> rich-text token preserved.
+        Verified visually:
+          ✅ ES: "Sabe cuándo comprar y cuándo vender." (welcome hero rendered correctly)
+          ✅ AR: full RTL layout + Arabic text rendered correctly
+          ✅ EN: default browser locale fallback works
+          ✅ Bundle compiles (1395 modules, no errors in Metro)
+        No backend testing needed (no backend file changed). Frontend testing pending user approval.

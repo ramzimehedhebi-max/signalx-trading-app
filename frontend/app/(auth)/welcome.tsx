@@ -48,12 +48,12 @@ export default function Welcome() {
             <Text style={styles.badgeText}>IA · CLAUDE SONNET 4.5</Text>
           </View>
           <Text style={styles.title}>
-            Sache <Text style={{ color: theme.colors.primary }}>quand acheter</Text>{"\n"}
-            et quand vendre.
+            {t("auth.hero_title").split("<buy/>")[0]}
+            <Text style={{ color: theme.colors.primary }}>{t("auth.hero_buy")}</Text>
+            {t("auth.hero_title").split("<buy/>")[1]}
           </Text>
           <Text style={styles.subtitle}>
-            Signaux d&apos;achat / vente alimentés par l&apos;IA, en temps réel sur les
-            paires Binance. Décode le marché en quelques secondes.
+            {t("auth.hero_subtitle")}
           </Text>
 
           <TouchableOpacity
@@ -75,8 +75,7 @@ export default function Welcome() {
           </TouchableOpacity>
 
           <Text style={styles.disclaimer}>
-            Cet outil fournit des analyses, pas des conseils financiers. Le trading
-            crypto comporte des risques.
+            {t("auth.disclaimer")}
           </Text>
         </View>
       </SafeAreaView>
