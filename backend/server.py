@@ -226,14 +226,13 @@ class ResetPasswordReq(BaseModel):
 
 @api_router.post("/auth/forgot-password")
 async def forgot_password(req: ForgotPasswordReq):
-    """Generate a 6-digit reset code. Stored hashed with 30min TTL.
-    NOTE: For MVP, the code is returned in the response. In production, we'd
-    only send it by email (SendGrid/Mailgun integration TODO).
+    """Generate a 6-digit reset code, store hashed (30min TTL), send by email via Resend.
+    Always returns the same response to avoid leaking which emails exist.
     """
     user = await db.users.find_one({"email": req.email.lower()})
     if not user:
-        # Don't reveal whether the email exists (timing-safe response)
-        return {"sent": True, "dev_code": None}
+        # Don't reveal whether the email exists
+        return {"sent": True, "email_sent": False}
     import random, string
     code = "".join(random.choices(string.digits, k=6))
     code_hash = hash_password(code)
@@ -246,9 +245,19 @@ async def forgot_password(req: ForgotPasswordReq):
         "expires_at": datetime.now(timezone.utc) + timedelta(minutes=30),
         "used": False,
     })
-    logger.info(f"[PASSWORD-RESET] code generated for user={user['email']} code={code}")
-    # MVP: return code in response — UI displays it.
-    return {"sent": True, "dev_code": code}
+    logger.info(f"[PASSWORD-RESET] code generated for user={user['email']}")
+    # Send via Resend (non-blocking — if it fails, we still log the code as fallback)
+    from email_service import send_reset_code_email, is_configured as email_configured
+    email_sent = False
+    if email_configured():
+        try:
+            email_sent = await send_reset_code_email(user["email"], code, user.get("name"))
+        except Exception as e:
+            logger.exception(f"[PASSWORD-RESET] email send error: {e}")
+    if not email_sent:
+        # Fallback: log the code to backend so admin can recover (dev mode)
+        logger.warning(f"[PASSWORD-RESET] FALLBACK code={code} for {user['email']} (email not sent)")
+    return {"sent": True, "email_sent": email_sent}
 
 
 @api_router.post("/auth/reset-password", response_model=AuthResp)

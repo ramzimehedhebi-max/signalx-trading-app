@@ -26,7 +26,7 @@ export default function ForgotPassword() {
   const [code, setCode] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
-  const [devCode, setDevCode] = useState<string | null>(null);
+  const [emailSent, setEmailSent] = useState<boolean>(false);
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
@@ -39,7 +39,7 @@ export default function ForgotPassword() {
     setLoading(true);
     try {
       const res = await api.forgotPassword(email.trim().toLowerCase());
-      setDevCode(res?.dev_code || null);
+      setEmailSent(!!res?.email_sent);
       setStep("reset");
     } catch (e: any) {
       setErr(e.message);
@@ -135,15 +135,25 @@ export default function ForgotPassword() {
             </>
           ) : (
             <>
-              {/* MVP dev_code display */}
-              {devCode && (
+              {/* Email sent confirmation */}
+              {emailSent ? (
                 <View style={styles.devBox}>
-                  <Ionicons name="information-circle" size={18} color={theme.colors.primary} />
+                  <Ionicons name="mail" size={22} color={theme.colors.primary} />
                   <View style={{ flex: 1 }}>
-                    <Text style={styles.devLabel}>Mode démo — code direct</Text>
-                    <Text style={styles.devCode}>{devCode}</Text>
+                    <Text style={styles.devLabel}>📧 Email envoyé !</Text>
                     <Text style={styles.devHint}>
-                      L'envoi par email sera ajouté en production. Copie ce code ci-dessous.
+                      Un code à 6 chiffres a été envoyé à{"\n"}<Text style={{color:'#fff',fontWeight:'700'}}>{email}</Text>{"\n\n"}
+                      Vérifie ta boîte de réception (et le dossier <Text style={{color:theme.colors.primary,fontWeight:'700'}}>spam</Text>). Le code expire dans 30 min.
+                    </Text>
+                  </View>
+                </View>
+              ) : (
+                <View style={[styles.devBox, {borderColor:'rgba(255,69,96,0.3)',backgroundColor:'rgba(255,69,96,0.08)'}]}>
+                  <Ionicons name="warning" size={22} color={theme.colors.danger} />
+                  <View style={{ flex: 1 }}>
+                    <Text style={[styles.devLabel,{color:theme.colors.danger}]}>Email non envoyé</Text>
+                    <Text style={styles.devHint}>
+                      L'email n'a pas pu être envoyé. Contacte le support pour récupérer ton code manuellement.
                     </Text>
                   </View>
                 </View>
