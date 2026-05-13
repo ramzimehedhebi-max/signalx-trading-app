@@ -136,6 +136,25 @@ export default function Dashboard() {
           </View>
         </TouchableOpacity>
 
+        {/* Prediction CTA */}
+        <TouchableOpacity
+          style={styles.predictCard}
+          onPress={() => router.push("/predict")}
+          activeOpacity={0.85}
+          testID="predict-cta-btn"
+        >
+          <View style={styles.predictLeft}>
+            <View style={styles.predictIcon}>
+              <Ionicons name="telescope" size={20} color={theme.colors.primary} />
+            </View>
+            <View>
+              <Text style={styles.predictTitle}>🔮 Prédictions IA</Text>
+              <Text style={styles.predictSub}>Top opportunités 24h / 3J / 7J</Text>
+            </View>
+          </View>
+          <Ionicons name="chevron-forward" color={theme.colors.textMuted} size={20} />
+        </TouchableOpacity>
+
         {/* Watchlist */}
         <View style={styles.sectionHead}>
           <Text style={styles.sectionTitle}>Ma watchlist</Text>
@@ -334,6 +353,20 @@ const styles = StyleSheet.create({
     marginTop: 14,
   },
   aiCtaText: { color: theme.colors.primary, fontWeight: "800", fontSize: 13 },
+
+  predictCard: {
+    marginTop: 12, padding: 16,
+    flexDirection: "row", alignItems: "center", justifyContent: "space-between",
+    backgroundColor: theme.colors.surface, borderRadius: 18,
+    borderColor: theme.colors.border, borderWidth: 1,
+  },
+  predictLeft: { flexDirection: "row", alignItems: "center", gap: 12 },
+  predictIcon: {
+    width: 42, height: 42, borderRadius: 14, alignItems: "center", justifyContent: "center",
+    backgroundColor: "rgba(243,186,47,0.10)",
+  },
+  predictTitle: { color: "#fff", fontWeight: "800", fontSize: 14 },
+  predictSub: { color: theme.colors.textSecondary, fontSize: 11, marginTop: 2 },
 
   sectionHead: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginTop: 28, marginBottom: 12 },
   sectionTitle: { color: "#fff", fontSize: 17, fontWeight: "800", letterSpacing: -0.3 },

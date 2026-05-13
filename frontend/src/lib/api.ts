@@ -117,4 +117,10 @@ export const api = {
   botRunNow: () => request<any>("/bot/run-now", { method: "POST" }),
   botBacktest: (params: any) =>
     request<any>("/bot/backtest", { method: "POST", body: JSON.stringify(params) }),
+
+  // Predictions
+  predict: (symbol: string, horizon = "24h") =>
+    request<any>("/ai/predict", { method: "POST", body: JSON.stringify({ symbol, horizon }) }),
+  predictTop: (horizon = "24h") =>
+    request<any[]>(`/ai/predict/top?horizon=${horizon}`),
 };
