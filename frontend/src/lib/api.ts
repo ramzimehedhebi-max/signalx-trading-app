@@ -39,7 +39,10 @@ async function request<T>(
   }
   if (!res.ok) {
     const msg = (data && data.detail) || `Erreur ${res.status}`;
-    throw new Error(typeof msg === "string" ? msg : JSON.stringify(msg));
+    const err: any = new Error(typeof msg === "string" ? msg : JSON.stringify(msg));
+    err.status = res.status;
+    err.requiresPremium = res.status === 402;
+    throw err;
   }
   return data as T;
 }

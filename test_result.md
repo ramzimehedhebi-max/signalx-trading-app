@@ -212,10 +212,41 @@ frontend:
             - Bot shows "MODE PAPER — SIMULATION" badge with toggle
             - Kill-switch row appears only when live_mode is on
 
+  - task: "Free tier enforcement on /api/bot/config (pairs cap, live_mode Premium gate) and /api/ai/predict (1 prediction/day)"
+    implemented: true
+    working: true
+    file: "/app/backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        - working: "NA"
+          agent: "main"
+          comment: |
+            New free-tier gates added:
+            - FREE_MAX_PAIRS = 3 → PUT /api/bot/config with >3 pairs returns 402 with French msg "Plan Free limité à 3 paires"
+            - FREE_MAX_PREDICTIONS_PER_DAY = 1 → POST /api/ai/predict tracked via db.prediction_quota, second call same day returns 402 "Plan Free limité à 1 prédiction(s) IA par jour"
+            - live_mode=true on /api/bot/config gated to Premium (402); but Binance-not-connected check runs FIRST so a non-connected Free user gets 400 "Connecte d'abord tes clés Binance" before hitting the Premium gate.
+        - working: true
+          agent: "testing"
+          comment: |
+            All 9 scenarios PASSED via /app/backend_test_freetier.py against http://localhost:8001/api with creds ramzimehedhebi@gmail.com / Trader2026.
+              1. Login → 200 ✅
+              2. GET /premium/status → 200 {is_premium:false, stripe_configured:false} ✅
+              3. PUT /bot/config {pairs:[5]} → 402 "Plan Free limité à 3 paires. Passe à Premium pour des paires illimitées." ✅
+              4. PUT /bot/config {pairs:[3]} → 200, pairs persisted as ['BTCUSDT','ETHUSDT','SOLUSDT'] ✅
+              5. PUT /bot/config {live_mode:true} → 400 "Connecte d'abord tes clés Binance avant d'activer le mode Live" ✅ (Binance check runs first, as documented; NOT 500)
+              6. Cleanup db.prediction_quota for the user via motor (0 existing entries today) ✅
+              7. POST /ai/predict {symbol:BTCUSDT, horizon:24h} (1st call) → 200 with prediction data (cached hit) ✅
+              8. POST /ai/predict (2nd call, same day) → 402 "Plan Free limité à 1 prédiction(s) IA par jour. Passe à Premium pour des prédictions illimitées." ✅
+              9. Sanity: GET /bot/config → 200, GET /premium/status → 200 is_premium=false ✅
+            Quota collection db.prediction_quota correctly writes one document per Free-user prediction (verified by the 2nd-call 402 response). No 500 errors observed. All French messages match spec.
+            No code changes were made during testing.
+
 metadata:
   created_by: "main_agent"
-  version: "1.1"
-  test_sequence: 1
+  version: "1.2"
+  test_sequence: 2
   run_ui: false
 
 test_plan:
@@ -267,7 +298,18 @@ agent_communication:
 
     - agent: "testing"
       message: |
-        Tested the 4 new Stripe Premium endpoints + 3 sanity endpoints via /app/backend_test_stripe.py.
+        Tested the new FREE TIER ENFORCEMENT via /app/backend_test_freetier.py. All 9/9 scenarios PASSED.
+        Backend URL http://localhost:8001/api, creds ramzimehedhebi@gmail.com / Trader2026 (Free plan, is_premium=false).
+          1. PUT /bot/config {pairs:[5]} → 402 "Plan Free limité à 3 paires. Passe à Premium pour des paires illimitées." ✅
+          2. PUT /bot/config {pairs:[3]} → 200, pairs persisted ✅
+          3. PUT /bot/config {live_mode:true} → 400 "Connecte d'abord tes clés Binance avant d'activer le mode Live" ✅
+             (Binance check runs BEFORE Premium gate per code order at server.py L1158-L1171. As documented in the request — NOT 500, both guards are present.)
+          4. Cleaned db.prediction_quota for the user via motor → 0 entries pre-test
+          5. POST /ai/predict (1st call, BTCUSDT/24h) → 200 with full prediction data ✅
+          6. POST /ai/predict (2nd call, same body) → 402 "Plan Free limité à 1 prédiction(s) IA par jour. Passe à Premium pour des prédictions illimitées." ✅
+          7. Sanity: GET /bot/config → 200 ✅, GET /premium/status → 200 is_premium=false ✅
+        Quota collection db.prediction_quota is being written correctly (verified by 2nd-call 402). No 500 errors. All French messages match spec exactly.
+        No code changes made during testing. Both newly-introduced gates work as designed.
         All 7 scenarios PASSED (http://localhost:8001/api, creds ramzimehedhebi@gmail.com / Trader2026).
           1. GET /premium/status → 200 {is_premium:false, status:null, stripe_configured:false} ✅
           2. POST /premium/checkout → 503 "Paiements indisponibles — Stripe n'est pas encore configuré côté serveur." ✅

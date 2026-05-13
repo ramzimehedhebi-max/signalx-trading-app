@@ -1162,6 +1162,21 @@ async def bot_update_config(req: BotConfigUpdate, user=Depends(get_current_user)
                 status_code=400,
                 detail="Connecte d'abord tes clés Binance avant d'activer le mode Live",
             )
+        # Live mode is Premium-only
+        premium = await _get_premium_status(user["id"])
+        if not premium["is_premium"]:
+            raise HTTPException(
+                status_code=402,
+                detail="Le trading LIVE est réservé aux membres Premium. Passe à Premium pour l'activer (9,99€/mois).",
+            )
+    # Free tier: max 3 pairs
+    if "pairs" in update and update["pairs"] is not None:
+        premium = await _get_premium_status(user["id"])
+        if not premium["is_premium"] and len(update["pairs"]) > FREE_MAX_PAIRS:
+            raise HTTPException(
+                status_code=402,
+                detail=f"Plan Free limité à {FREE_MAX_PAIRS} paires. Passe à Premium pour des paires illimitées.",
+            )
 
     await db.bot_configs.update_one({"user_id": user["id"]}, {"$set": update})
     cfg = await db.bot_configs.find_one({"user_id": user["id"]}, {"_id": 0})
@@ -2006,6 +2021,28 @@ class PredictReq(BaseModel):
 
 @api_router.post("/ai/predict")
 async def ai_predict(req: PredictReq, user=Depends(get_current_user)):
+    # Free tier rate-limit: FREE_MAX_PREDICTIONS_PER_DAY per UTC day
+    premium = await _get_premium_status(user["id"])
+    if not premium["is_premium"]:
+        today_start = datetime.now(timezone.utc).replace(
+            hour=0, minute=0, second=0, microsecond=0
+        )
+        used = await db.prediction_quota.count_documents({
+            "user_id": user["id"],
+            "ts": {"$gte": today_start},
+        })
+        if used >= FREE_MAX_PREDICTIONS_PER_DAY:
+            raise HTTPException(
+                status_code=402,
+                detail=f"Plan Free limité à {FREE_MAX_PREDICTIONS_PER_DAY} prédiction(s) IA par jour. Passe à Premium pour des prédictions illimitées.",
+            )
+        # Record usage (only for Free users)
+        await db.prediction_quota.insert_one({
+            "user_id": user["id"],
+            "ts": datetime.now(timezone.utc),
+            "symbol": req.symbol.upper(),
+            "horizon": req.horizon,
+        })
     symbol = req.symbol.upper()
     horizon = req.horizon
     interval_map = {"24h": "1h", "3d": "4h", "7d": "1d"}
