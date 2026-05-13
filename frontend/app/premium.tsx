@@ -76,16 +76,21 @@ export default function PremiumScreen() {
   const onSubscribe = async () => {
     setBusy(true);
     try {
-      // Build dynamic redirect URLs that work in Expo Go (exp://...) AND in built apps (signalx://...)
-      const successUrl = Linking.createURL("premium", { queryParams: { paid: "1" } });
-      const cancelUrl = Linking.createURL("premium", { queryParams: { paid: "0" } });
+      // Build the deep-link target that the bridge will redirect to (works in Expo Go AND prod app)
+      const deepLink = Linking.createURL("premium");
+      // Stripe redirects to our HTTPS BRIDGE (Chrome blocks exp:// redirects from HTTPS).
+      // The bridge then JS-redirects to the deep link.
+      const backend = process.env.EXPO_PUBLIC_BACKEND_URL || "";
+      const successUrl = `${backend}/api/stripe/return?paid=1&target=${encodeURIComponent(deepLink)}`;
+      const cancelUrl = `${backend}/api/stripe/return?paid=0&target=${encodeURIComponent(deepLink)}`;
       const sess = await api.premiumCheckout(successUrl, cancelUrl);
       if (!sess?.url) throw new Error("URL Stripe manquante");
       if (Platform.OS === "web") {
         if (typeof window !== "undefined") window.location.href = sess.url;
       } else {
-        await WebBrowser.openAuthSessionAsync(sess.url, successUrl);
-        // After Stripe redirect (or dismiss), refresh status
+        // openAuthSessionAsync handles both bridge redirect AND auto-close back to app
+        await WebBrowser.openAuthSessionAsync(sess.url, deepLink);
+        // After return (whether success/cancel/dismissed), refresh status
         await loadStatus();
       }
     } catch (e: any) {

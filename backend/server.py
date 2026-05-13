@@ -977,6 +977,75 @@ async def premium_cancel(user=Depends(get_current_user)):
         raise HTTPException(status_code=500, detail=str(e)[:200])
 
 
+# ----- Stripe HTTPS bridge → deep-link back into Expo app -----
+# Chrome blocks direct exp:// redirects from HTTPS, so Stripe redirects HERE first,
+# this page does a JS deep-link to the app scheme.
+from fastapi.responses import HTMLResponse
+
+_BRIDGE_HTML = """<!doctype html>
+<html lang="fr"><head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Retour à SignalX…</title>
+<style>
+  html,body{margin:0;background:#0B0B10;color:#fff;font-family:-apple-system,Segoe UI,Roboto,sans-serif;height:100%;}
+  .wrap{height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px;text-align:center;gap:16px;}
+  .ring{width:64px;height:64px;border-radius:50%;border:3px solid rgba(243,186,47,0.2);border-top-color:#F3BA2F;animation:spin 0.9s linear infinite;}
+  @keyframes spin{to{transform:rotate(360deg);}}
+  h1{font-size:22px;margin:0;}
+  p{color:#999;margin:0;font-size:14px;max-width:280px;line-height:1.5;}
+  a.btn{margin-top:18px;display:inline-block;padding:12px 22px;background:#F3BA2F;color:#000;font-weight:800;border-radius:999px;text-decoration:none;}
+  .small{color:#666;font-size:12px;margin-top:24px;}
+</style>
+</head><body>
+<div class="wrap">
+  <div class="ring"></div>
+  <h1>__TITLE__</h1>
+  <p>__MSG__</p>
+  <a id="back" class="btn" href="__DEEPLINK__">Retour à l'app</a>
+  <div class="small">Si rien ne se passe, appuie sur le bouton ci-dessus.</div>
+</div>
+<script>
+  var DEEPLINK = "__DEEPLINK__";
+  // Try to deep-link automatically right away
+  setTimeout(function(){ window.location.href = DEEPLINK; }, 250);
+  // Some browsers need a user gesture; tap anywhere triggers it
+  document.body.addEventListener('click', function(){ window.location.href = DEEPLINK; });
+</script>
+</body></html>"""
+
+
+@app.get("/api/stripe/return")
+async def stripe_return(
+    paid: str = "1",
+    target: str = "",
+    session_id: str = "",
+):
+    """HTTPS bridge: Stripe redirects HERE → this page deep-links to the app via JS.
+    `target` is a URL-encoded deep link like exp://...../premium that we relay to.
+    """
+    import urllib.parse
+    deeplink = urllib.parse.unquote(target) if target else "signalx://premium"
+    # Append query params
+    sep = "&" if "?" in deeplink else "?"
+    deeplink = f"{deeplink}{sep}paid={paid}"
+    if session_id:
+        deeplink += f"&session_id={urllib.parse.quote(session_id)}"
+    if paid == "1":
+        title = "Paiement reçu ✓"
+        msg = "Activation Premium en cours… On te ramène dans l'app SignalX."
+    else:
+        title = "Paiement annulé"
+        msg = "Aucun montant n'a été débité. On te ramène dans l'app SignalX."
+    html = (
+        _BRIDGE_HTML
+        .replace("__TITLE__", title)
+        .replace("__MSG__", msg)
+        .replace("__DEEPLINK__", deeplink)
+    )
+    return HTMLResponse(content=html)
+
+
 # NOTE: webhook is mounted on the main app (not api_router) to keep the raw body
 @app.post("/api/stripe/webhook")
 async def stripe_webhook(request: Request):
