@@ -1,4 +1,4 @@
-from fastapi import FastAPI, APIRouter, HTTPException, Depends, Header
+from fastapi import FastAPI, APIRouter, HTTPException, Depends, Header, Request
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
@@ -29,6 +29,9 @@ from binance_live import (
     round_step,
     extract_executed,
 )
+
+# Stripe subscriptions
+import stripe_subs
 
 # MongoDB connection
 mongo_url = os.environ['MONGO_URL']
@@ -899,6 +902,144 @@ async def binance_account(user=Depends(get_current_user)):
         return {"balances": balances}
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Erreur Binance: {str(e)[:200]}")
+
+
+# ============ STRIPE PREMIUM SUBSCRIPTIONS ============
+PRICE_EUR = 9.99
+FREE_MAX_PAIRS = 3
+FREE_MAX_PREDICTIONS_PER_DAY = 1
+
+
+async def _get_premium_status(user_id: str) -> dict:
+    u = await db.users.find_one({"id": user_id}) or {}
+    sub_status = u.get("subscription_status")
+    is_premium = stripe_subs.is_premium_status(sub_status or "")
+    return {
+        "is_premium": is_premium,
+        "status": sub_status,
+        "current_period_end": u.get("current_period_end"),
+        "cancel_at_period_end": u.get("cancel_at_period_end", False),
+        "stripe_configured": stripe_subs.is_configured(),
+    }
+
+
+@api_router.get("/premium/status")
+async def premium_status(user=Depends(get_current_user)):
+    return await _get_premium_status(user["id"])
+
+
+@api_router.post("/premium/checkout")
+async def premium_checkout(user=Depends(get_current_user)):
+    if not stripe_subs.is_configured():
+        raise HTTPException(
+            status_code=503,
+            detail="Paiements indisponibles — Stripe n'est pas encore configuré côté serveur.",
+        )
+    u = await db.users.find_one({"id": user["id"]})
+    if not u:
+        raise HTTPException(status_code=404, detail="Utilisateur introuvable")
+    try:
+        customer_id = await stripe_subs.get_or_create_customer(db, u)
+        sess = stripe_subs.create_checkout_session(customer_id, user["id"])
+        return sess
+    except Exception as e:
+        logger.exception(f"Stripe checkout error: {e}")
+        raise HTTPException(status_code=500, detail=f"Stripe error: {str(e)[:200]}")
+
+
+@api_router.post("/premium/cancel")
+async def premium_cancel(user=Depends(get_current_user)):
+    """Cancel at period end (user keeps access until end of paid period)."""
+    if not stripe_subs.is_configured():
+        raise HTTPException(status_code=503, detail="Stripe non configuré")
+    u = await db.users.find_one({"id": user["id"]})
+    if not u or not u.get("subscription_id"):
+        raise HTTPException(status_code=400, detail="Aucun abonnement actif")
+    try:
+        import stripe
+        sub = stripe.Subscription.modify(u["subscription_id"], cancel_at_period_end=True)
+        await db.users.update_one(
+            {"id": user["id"]},
+            {"$set": {"cancel_at_period_end": True}},
+        )
+        return {"ok": True, "cancel_at_period_end": True}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e)[:200])
+
+
+# NOTE: webhook is mounted on the main app (not api_router) to keep the raw body
+@app.post("/api/stripe/webhook")
+async def stripe_webhook(request: Request):
+    payload = await request.body()
+    sig = request.headers.get("stripe-signature", "")
+    try:
+        event = stripe_subs.verify_webhook(payload, sig)
+    except Exception as e:
+        logger.warning(f"Stripe webhook verify failed: {e}")
+        raise HTTPException(status_code=400, detail="Invalid signature")
+
+    etype = event["type"]
+    obj = event["data"]["object"]
+    customer_id = obj.get("customer")
+    user_doc = None
+    if customer_id:
+        user_doc = await db.users.find_one({"stripe_customer_id": customer_id})
+
+    try:
+        if etype in (
+            "customer.subscription.created",
+            "customer.subscription.updated",
+            "customer.subscription.deleted",
+        ):
+            sub = obj
+            if user_doc:
+                upd = stripe_subs.subscription_to_dict(type("S", (), sub) if not hasattr(sub, "id") else sub)
+                # Build directly from dict
+                upd = {
+                    "subscription_id": sub.get("id"),
+                    "subscription_status": sub.get("status"),
+                    "current_period_end": datetime.fromtimestamp(
+                        sub.get("current_period_end"), tz=timezone.utc
+                    )
+                    if sub.get("current_period_end")
+                    else None,
+                    "cancel_at_period_end": sub.get("cancel_at_period_end", False),
+                    "premium_updated_at": datetime.now(timezone.utc),
+                }
+                await db.users.update_one({"id": user_doc["id"]}, {"$set": upd})
+                # Notify
+                if etype == "customer.subscription.created":
+                    await _create_notification(
+                        user_doc["id"],
+                        "premium",
+                        "🎉 Bienvenue dans Premium !",
+                        "Tu as maintenant accès aux paires illimitées, prédictions illimitées et trading Live.",
+                    )
+                elif etype == "customer.subscription.deleted":
+                    await _create_notification(
+                        user_doc["id"],
+                        "premium",
+                        "❌ Abonnement Premium annulé",
+                        "Tu repasses en plan Free. Tu peux te réabonner à tout moment.",
+                    )
+        elif etype == "invoice.payment_failed":
+            if user_doc:
+                await db.users.update_one(
+                    {"id": user_doc["id"]},
+                    {"$set": {"subscription_status": "past_due"}},
+                )
+                await _create_notification(
+                    user_doc["id"],
+                    "premium",
+                    "⚠️ Paiement Premium échoué",
+                    "Le paiement de ton abonnement Premium n'a pas pu être traité. Mets à jour ta carte sur Stripe.",
+                )
+        elif etype == "checkout.session.completed":
+            # Initial activation; the subscription.created event will set details
+            logger.info(f"Stripe checkout completed for customer={customer_id}")
+    except Exception as e:
+        logger.exception(f"Stripe webhook handler error: {e}")
+    return {"received": True}
 
 
 class BotConfig(BaseModel):

@@ -163,6 +163,37 @@ backend:
             - PUT /bot/config {live_max_position_usdt:25, live_killswitch:false} → 200, persisted (cap=25.0, killswitch=False) ✅
             - GET /bot/config exposes new fields live_mode, live_max_position_usdt, live_killswitch ✅
 
+  - task: "Stripe Premium subscription endpoints (placeholders, not configured)"
+    implemented: true
+    working: true
+    file: "/app/backend/server.py + /app/backend/stripe_subs.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        - working: "NA"
+          agent: "main"
+          comment: |
+            New endpoints added:
+            - GET /api/premium/status → returns is_premium, status, stripe_configured
+            - POST /api/premium/checkout → 503 short-circuit when Stripe not configured
+            - POST /api/premium/cancel → 503 if Stripe not configured, 400 if no active sub
+            - POST /api/stripe/webhook → verifies signature, 400 on invalid signature
+            stripe_subs.is_configured() detects placeholder env vars and returns False.
+            Env currently has placeholder values: sk_test_placeholder_replace_me, price_placeholder_create_in_dashboard, whsec_placeholder_replace_me.
+        - working: true
+          agent: "testing"
+          comment: |
+            All 7 scenarios PASSED via /app/backend_test_stripe.py against http://localhost:8001/api with credentials ramzimehedhebi@gmail.com / Trader2026.
+              1. GET /premium/status → 200 {is_premium:false, status:null, stripe_configured:false, current_period_end:null, cancel_at_period_end:false} ✅
+              2. POST /premium/checkout → 503 {"detail":"Paiements indisponibles — Stripe n'est pas encore configuré côté serveur."} ✅ (short-circuit working, French message correct)
+              3. POST /premium/cancel → 503 {"detail":"Stripe non configuré"} ✅ (correctly returns 503 because is_configured() check runs before subscription_id check; NOT 500)
+              4. POST /stripe/webhook (no stripe-signature header) → 400 {"detail":"Invalid signature"} ✅ (verify_webhook raises because STRIPE_WEBHOOK_SECRET is placeholder, exception caught and converted to 400)
+              5a. GET /auth/me → 200 (sanity check passed) ✅
+              5b. GET /binance/status → 200 {connected:false} (sanity check passed) ✅
+              5c. GET /bot/config → 200 with live_mode field present (sanity check passed) ✅
+            No 500 errors observed. All short-circuits behave exactly as specified. Ready for real Stripe key integration.
+
 frontend:
   - task: "Binance connect screen + Profile entry point + Bot live toggle"
     implemented: true
@@ -188,9 +219,7 @@ metadata:
   run_ui: false
 
 test_plan:
-  current_focus:
-    - "Binance Live trading endpoints + key encryption"
-    - "BotConfig schema updated with live_mode/live_max_position_usdt/live_killswitch"
+  current_focus: []
   stuck_tasks: []
   test_all: false
   test_priority: "high_first"
@@ -235,3 +264,18 @@ agent_communication:
           6) Existing endpoints unaffected (login, /bot/config, /bot/stats, /notifications, /ai/predict)
         Auth credentials: ramzimehedhebi@gmail.com / Trader2026
         Backend URL inside container: http://localhost:8001/api/
+
+    - agent: "testing"
+      message: |
+        Tested the 4 new Stripe Premium endpoints + 3 sanity endpoints via /app/backend_test_stripe.py.
+        All 7 scenarios PASSED (http://localhost:8001/api, creds ramzimehedhebi@gmail.com / Trader2026).
+          1. GET /premium/status → 200 {is_premium:false, status:null, stripe_configured:false} ✅
+          2. POST /premium/checkout → 503 "Paiements indisponibles — Stripe n'est pas encore configuré côté serveur." ✅
+          3. POST /premium/cancel → 503 "Stripe non configuré" (not 500, as required) ✅
+          4. POST /stripe/webhook (no signature header) → 400 "Invalid signature" ✅
+          5. Sanity: GET /auth/me → 200, GET /binance/status → 200 connected:false, GET /bot/config → 200 with live_mode field ✅
+        Stripe short-circuits work exactly as intended with placeholder env vars. No 500 errors observed. Backend logs confirmed:
+          - "Stripe webhook verify failed: Stripe webhook secret not configured" → handled as 400
+          - 503 responses logged for /premium/checkout and /premium/cancel
+        Backend Stripe scaffolding is fully working with placeholders. Ready for main agent to plug in the real Stripe sk_test_ key when user provides it.
+        No code changes were made during testing.

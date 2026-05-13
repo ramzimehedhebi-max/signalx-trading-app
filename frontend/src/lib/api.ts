@@ -142,4 +142,9 @@ export const api = {
   binanceDisconnect: () =>
     request<any>("/binance/disconnect", { method: "DELETE" }),
   binanceAccount: () => request<any>("/binance/account"),
+
+  // Premium
+  premiumStatus: () => request<any>("/premium/status"),
+  premiumCheckout: () => request<any>("/premium/checkout", { method: "POST" }),
+  premiumCancel: () => request<any>("/premium/cancel", { method: "POST" }),
 };

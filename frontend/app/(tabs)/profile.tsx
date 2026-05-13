@@ -11,11 +11,16 @@ export default function Profile() {
   const { user, logout } = useAuth();
   const router = useRouter();
   const [binance, setBinance] = useState<any>(null);
+  const [premium, setPremium] = useState<any>(null);
 
   const loadBinance = useCallback(async () => {
     try {
       const s = await api.binanceStatus();
       setBinance(s);
+    } catch {}
+    try {
+      const p = await api.premiumStatus();
+      setPremium(p);
     } catch {}
   }, []);
 
@@ -67,11 +72,48 @@ export default function Profile() {
             <Text style={styles.name}>{user?.name}</Text>
             <Text style={styles.email}>{user?.email}</Text>
           </View>
-          <View style={styles.proPill}>
-            <Ionicons name="sparkles" size={12} color={theme.colors.primary} />
-            <Text style={styles.proText}>IA Active</Text>
+          <View style={[styles.proPill, premium?.is_premium && styles.proPillActive]}>
+            <Ionicons
+              name={premium?.is_premium ? "diamond" : "sparkles"}
+              size={12}
+              color={premium?.is_premium ? theme.colors.success : theme.colors.primary}
+            />
+            <Text
+              style={[
+                styles.proText,
+                premium?.is_premium && { color: theme.colors.success },
+              ]}
+            >
+              {premium?.is_premium ? "Premium" : "Free"}
+            </Text>
           </View>
         </View>
+
+        {/* Premium card */}
+        <TouchableOpacity
+          activeOpacity={0.85}
+          style={[styles.binanceCard, premium?.is_premium && styles.binanceCardConnected]}
+          onPress={() => router.push("/premium")}
+        >
+          <View style={styles.binanceIconWrap}>
+            <Ionicons
+              name={premium?.is_premium ? "diamond" : "diamond-outline"}
+              size={22}
+              color={premium?.is_premium ? theme.colors.success : theme.colors.primary}
+            />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.binanceTitle}>
+              {premium?.is_premium ? "Tu es Premium 👑" : "Passer à Premium"}
+            </Text>
+            <Text style={styles.binanceSub}>
+              {premium?.is_premium
+                ? "Gérer ton abonnement"
+                : "Paires illimitées · Trading Live · 9,99€/mois"}
+            </Text>
+          </View>
+          <Ionicons name="chevron-forward" color={theme.colors.textMuted} size={18} />
+        </TouchableOpacity>
 
         {/* Binance connection — call-to-action */}
         <TouchableOpacity
@@ -165,6 +207,10 @@ const styles = StyleSheet.create({
     flexDirection: "row", alignItems: "center", gap: 4,
     paddingHorizontal: 10, paddingVertical: 6, borderRadius: 999,
     backgroundColor: "rgba(243,186,47,0.12)", borderColor: "rgba(243,186,47,0.4)", borderWidth: 1,
+  },
+  proPillActive: {
+    backgroundColor: "rgba(0,227,150,0.12)",
+    borderColor: "rgba(0,227,150,0.45)",
   },
   proText: { color: theme.colors.primary, fontWeight: "800", fontSize: 11 },
 
