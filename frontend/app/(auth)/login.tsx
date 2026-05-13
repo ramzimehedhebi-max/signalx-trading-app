@@ -13,12 +13,14 @@ import {
 import { Link, useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { useTranslation } from "react-i18next";
 import { theme } from "../../src/theme";
 import { useAuth } from "../../src/contexts/AuthContext";
 
 export default function Login() {
   const { login } = useAuth();
   const router = useRouter();
+  const { t } = useTranslation();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -27,7 +29,7 @@ export default function Login() {
   const onSubmit = async () => {
     setErr(null);
     if (!email.trim() || !password) {
-      setErr("Email et mot de passe requis");
+      setErr(t("auth.errors.email_required"));
       return;
     }
     setLoading(true);
@@ -35,7 +37,7 @@ export default function Login() {
       await login(email.trim().toLowerCase(), password);
       router.replace("/(tabs)");
     } catch (e: any) {
-      setErr(e.message || "Erreur de connexion");
+      setErr(e.message || t("common.error"));
     } finally {
       setLoading(false);
     }
@@ -52,15 +54,15 @@ export default function Login() {
             <Ionicons name="chevron-back" size={24} color="#fff" />
           </TouchableOpacity>
 
-          <Text style={styles.title}>Bon retour 👋</Text>
-          <Text style={styles.subtitle}>Connecte-toi pour suivre tes signaux IA.</Text>
+          <Text style={styles.title}>{t("auth.welcome")} 👋</Text>
+          <Text style={styles.subtitle}>{t("auth.tagline")}</Text>
 
           <View style={styles.field}>
-            <Text style={styles.label}>EMAIL</Text>
+            <Text style={styles.label}>{t("auth.email").toUpperCase()}</Text>
             <TextInput
               value={email}
               onChangeText={setEmail}
-              placeholder="toi@email.com"
+              placeholder={t("auth.email_placeholder")}
               placeholderTextColor={theme.colors.textMuted}
               autoCapitalize="none"
               keyboardType="email-address"
@@ -70,7 +72,7 @@ export default function Login() {
           </View>
 
           <View style={styles.field}>
-            <Text style={styles.label}>MOT DE PASSE</Text>
+            <Text style={styles.label}>{t("auth.password").toUpperCase()}</Text>
             <TextInput
               value={password}
               onChangeText={setPassword}
@@ -89,7 +91,7 @@ export default function Login() {
             style={styles.forgotBtn}
             hitSlop={10}
           >
-            <Text style={styles.forgotText}>Mot de passe oublié ?</Text>
+            <Text style={styles.forgotText}>{t("auth.forgot_password")}</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -102,14 +104,14 @@ export default function Login() {
             {loading ? (
               <ActivityIndicator color="#000" />
             ) : (
-              <Text style={styles.primaryText}>Se connecter</Text>
+              <Text style={styles.primaryText}>{t("auth.login")}</Text>
             )}
           </TouchableOpacity>
 
           <View style={styles.footer}>
-            <Text style={styles.footerText}>Pas encore de compte ? </Text>
+            <Text style={styles.footerText}>{t("auth.no_account")} </Text>
             <Link href="/(auth)/register" testID="login-goto-register" replace>
-              <Text style={styles.link}>S&apos;inscrire</Text>
+              <Text style={styles.link}>{t("auth.register")}</Text>
             </Link>
           </View>
         </ScrollView>

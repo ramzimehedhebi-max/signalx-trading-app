@@ -18,6 +18,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import * as Haptics from "expo-haptics";
+import { useTranslation } from "react-i18next";
 import { theme, fmtPrice, fmtUsd, symbolToBase } from "../../src/theme";
 import { api } from "../../src/lib/api";
 
@@ -25,6 +26,7 @@ const ALL_PAIRS = ["BTCUSDT", "ETHUSDT", "SOLUSDT", "BNBUSDT", "XRPUSDT", "DOGEU
 
 export default function Bot() {
   const router = useRouter();
+  const { t } = useTranslation();
   const [cfg, setCfg] = useState<any | null>(null);
   const [stats, setStats] = useState<any | null>(null);
   const [positions, setPositions] = useState<any[]>([]);
@@ -211,8 +213,8 @@ export default function Bot() {
       >
         <View style={styles.headerRow}>
           <View>
-            <Text style={styles.title}>Bot IA</Text>
-            <Text style={styles.subtitle}>Trading automatique · Paper Trading</Text>
+            <Text style={styles.title}>{t("bot.title")}</Text>
+            <Text style={styles.subtitle}>{cfg.live_mode ? t("bot.mode.live") : t("bot.mode.paper")}</Text>
           </View>
           <TouchableOpacity onPress={() => setSettingsOpen(true)} style={styles.iconBtn} testID="bot-settings-btn">
             <Ionicons name="options-outline" size={20} color="#fff" />
@@ -224,7 +226,7 @@ export default function Bot() {
           <View style={styles.statusHead}>
             <View style={styles.statusLeft}>
               <View style={[styles.dotPulse, { backgroundColor: cfg.enabled ? theme.colors.buy : theme.colors.textMuted }]} />
-              <Text style={styles.statusLabel}>{cfg.enabled ? "BOT ACTIF" : "BOT EN PAUSE"}</Text>
+              <Text style={styles.statusLabel}>{cfg.enabled ? t("bot.active") : t("bot.inactive")}</Text>
             </View>
             <Switch
               value={cfg.enabled}
@@ -236,7 +238,7 @@ export default function Bot() {
             />
           </View>
 
-          <Text style={styles.balanceLabel}>SOLDE PAPER (USDT)</Text>
+          <Text style={styles.balanceLabel}>{t("bot.stats.capital")} (USDT)</Text>
           <Text style={styles.balance}>{fmtUsd(stats.paper_balance_usdt)}</Text>
 
           <View style={styles.pnlRow}>
@@ -250,11 +252,11 @@ export default function Bot() {
 
           <View style={styles.kpiRow}>
             <View style={styles.kpi}>
-              <Text style={styles.kpiL}>POSITIONS</Text>
+              <Text style={styles.kpiL}>{t("bot.stats.positions")}</Text>
               <Text style={styles.kpiV}>{stats.open_positions_count} / {cfg.max_positions}</Text>
             </View>
             <View style={styles.kpi}>
-              <Text style={styles.kpiL}>TRADES</Text>
+              <Text style={styles.kpiL}>{t("bot.stats.trades")}</Text>
               <Text style={styles.kpiV}>{stats.trades_count}</Text>
             </View>
             <View style={styles.kpi}>

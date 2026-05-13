@@ -11,6 +11,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
+import { useTranslation } from "react-i18next";
 import { theme, fmtPrice, fmtPct, symbolToBase } from "../../src/theme";
 import { api } from "../../src/lib/api";
 import { useAuth } from "../../src/contexts/AuthContext";
@@ -61,6 +62,7 @@ function NotifBell() {
 
 export default function Dashboard() {
   const { user } = useAuth();
+  const { t } = useTranslation();
   const router = useRouter();
   const [tickers, setTickers] = useState<Ticker[]>([]);
   const [watch, setWatch] = useState<any[]>([]);
@@ -132,7 +134,7 @@ export default function Dashboard() {
         {/* Header */}
         <View style={styles.header}>
           <View>
-            <Text style={styles.greeting}>Salut, {user?.name?.split(" ")[0] || "trader"} 👋</Text>
+            <Text style={styles.greeting}>{t("home.greeting", { name: user?.name?.split(" ")[0] || "trader" })}</Text>
             <Text style={styles.headerSub}>Voici ton cockpit du jour</Text>
           </View>
           <View style={{ flexDirection: "row", gap: 8 }}>
@@ -161,7 +163,7 @@ export default function Dashboard() {
               <View style={styles.dot} />
               <Text style={styles.aiPillText}>CLAUDE SONNET 4.5</Text>
             </View>
-            <Text style={styles.aiTitle}>Acheter maintenant ?</Text>
+            <Text style={styles.aiTitle}>{t("home.ai_pick_buy")}</Text>
             <Text style={styles.aiSubtitle}>
               Génère un signal d&apos;achat / vente sur n&apos;importe quelle paire en quelques secondes.
             </Text>
@@ -193,7 +195,7 @@ export default function Dashboard() {
 
         {/* Watchlist */}
         <View style={styles.sectionHead}>
-          <Text style={styles.sectionTitle}>Ma watchlist</Text>
+          <Text style={styles.sectionTitle}>{t("home.watchlist")}</Text>
           <TouchableOpacity onPress={() => router.push("/(tabs)/markets")} testID="watchlist-add-btn">
             <Text style={styles.linkText}>Ajouter +</Text>
           </TouchableOpacity>
@@ -248,7 +250,7 @@ export default function Dashboard() {
 
         {/* Top movers (with sparkline for top 4) */}
         <View style={styles.sectionHead}>
-          <Text style={styles.sectionTitle}>Mouvements forts</Text>
+          <Text style={styles.sectionTitle}>{t("home.movers")}</Text>
           <Text style={styles.labelMuted}>24H</Text>
         </View>
         <View style={styles.bento}>

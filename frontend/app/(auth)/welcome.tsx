@@ -10,6 +10,7 @@ import {
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
+import { useTranslation } from "react-i18next";
 import { theme } from "../../src/theme";
 import { SafeAreaView } from "react-native-safe-area-context";
 
@@ -18,6 +19,7 @@ const HERO =
 
 export default function Welcome() {
   const router = useRouter();
+  const { t } = useTranslation();
   return (
     <ImageBackground
       source={{ uri: HERO }}
@@ -60,7 +62,7 @@ export default function Welcome() {
             testID="welcome-register-btn"
             activeOpacity={0.85}
           >
-            <Text style={styles.primaryBtnText}>Créer un compte</Text>
+            <Text style={styles.primaryBtnText}>{t("auth.register")}</Text>
             <Ionicons name="arrow-forward" size={18} color="#000" />
           </TouchableOpacity>
           <TouchableOpacity
@@ -69,7 +71,7 @@ export default function Welcome() {
             testID="welcome-login-btn"
             activeOpacity={0.85}
           >
-            <Text style={styles.secondaryBtnText}>J&apos;ai déjà un compte</Text>
+            <Text style={styles.secondaryBtnText}>{t("auth.have_account")}</Text>
           </TouchableOpacity>
 
           <Text style={styles.disclaimer}>

@@ -2,9 +2,11 @@ import React from "react";
 import { Tabs } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { Platform, View } from "react-native";
+import { useTranslation } from "react-i18next";
 import { theme } from "../../src/theme";
 
 export default function TabsLayout() {
+  const { t } = useTranslation();
   return (
     <Tabs
       screenOptions={{
@@ -25,21 +27,21 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="index"
         options={{
-          title: "Accueil",
+          title: t("tabs.home"),
           tabBarIcon: ({ color, size }) => <Ionicons name="home" size={size} color={color} />,
         }}
       />
       <Tabs.Screen
         name="markets"
         options={{
-          title: "Marchés",
+          title: t("tabs.markets"),
           tabBarIcon: ({ color, size }) => <Ionicons name="stats-chart" size={size} color={color} />,
         }}
       />
       <Tabs.Screen
         name="signals"
         options={{
-          title: "Signaux IA",
+          title: t("tabs.signals"),
           tabBarIcon: ({ color, size, focused }) => (
             <View>
               <Ionicons name="sparkles" size={size} color={color} />
@@ -63,7 +65,7 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="bot"
         options={{
-          title: "Bot IA",
+          title: t("tabs.bot"),
           tabBarIcon: ({ color, size, focused }) => (
             <View>
               <Ionicons name="rocket" size={size} color={color} />
@@ -93,7 +95,7 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="profile"
         options={{
-          title: "Profil",
+          title: t("tabs.profile"),
           tabBarIcon: ({ color, size }) => <Ionicons name="person-circle" size={size} color={color} />,
         }}
       />
