@@ -1,21 +1,50 @@
-import * as Notifications from "expo-notifications";
-import * as Device from "expo-device";
+/**
+ * Safe wrapper around expo-notifications.
+ *
+ * Starting with Expo SDK 53, remote (push) notifications were removed from
+ * Expo Go on Android. Importing/using expo-notifications at module load time
+ * crashes the app on Expo Go Android. To keep Expo Go usable during dev, we:
+ *  - delay the import until needed
+ *  - swallow any errors silently
+ *  - return null tokens (push won't work in Expo Go but the app still runs)
+ *
+ * In a real development/production build this code path still works normally.
+ */
 import { Platform } from "react-native";
+import Constants from "expo-constants";
 import { api } from "./api";
 
-Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowAlert: true,
-    shouldShowBanner: true,
-    shouldShowList: true,
-    shouldPlaySound: true,
-    shouldSetBadge: true,
-  }),
-});
+// Detect Expo Go runtime (cannot do real push). Constants.appOwnership === 'expo' in Expo Go.
+const isExpoGo = Constants.appOwnership === "expo";
 
-export async function registerForPushNotifications() {
-  if (!Device.isDevice) return null;
+export async function registerForPushNotifications(): Promise<string | null> {
+  // Skip entirely on web and inside Expo Go on Android (SDK 53 removed it).
+  if (Platform.OS === "web") return null;
+  if (isExpoGo && Platform.OS === "android") {
+    console.log("[push] Expo Go Android — push notifications disabled (use a dev build).");
+    return null;
+  }
+
   try {
+    // Lazy import to prevent module-load crash in Expo Go.
+    const Notifications = await import("expo-notifications");
+    const Device = await import("expo-device");
+
+    // Configure handler (must be set after import, idempotent).
+    try {
+      Notifications.setNotificationHandler({
+        handleNotification: async () => ({
+          shouldShowAlert: true,
+          shouldShowBanner: true,
+          shouldShowList: true,
+          shouldPlaySound: true,
+          shouldSetBadge: true,
+        } as any),
+      });
+    } catch {}
+
+    if (!Device.isDevice) return null;
+
     const { status: existing } = await Notifications.getPermissionsAsync();
     let final = existing;
     if (existing !== "granted") {
@@ -23,9 +52,10 @@ export async function registerForPushNotifications() {
       final = status;
     }
     if (final !== "granted") {
-      console.log("Push permission denied");
+      console.log("[push] permission denied");
       return null;
     }
+
     if (Platform.OS === "android") {
       await Notifications.setNotificationChannelAsync("default", {
         name: "SignalX",
@@ -34,17 +64,19 @@ export async function registerForPushNotifications() {
         lightColor: "#F3BA2F",
       });
     }
+
     const token = (await Notifications.getExpoPushTokenAsync()).data;
     if (token) {
       try {
         await api.saveExpoPushToken(token);
       } catch (e) {
-        console.warn("Push token save failed:", e);
+        console.warn("[push] token save failed:", e);
       }
     }
     return token;
-  } catch (e) {
-    console.warn("registerForPushNotifications error:", e);
+  } catch (e: any) {
+    // Most likely: expo-notifications removed from Expo Go (Android, SDK 53+).
+    console.warn("[push] registerForPushNotifications skipped:", e?.message || e);
     return null;
   }
 }
