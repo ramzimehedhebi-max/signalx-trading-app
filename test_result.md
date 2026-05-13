@@ -243,10 +243,77 @@ frontend:
             Quota collection db.prediction_quota correctly writes one document per Free-user prediction (verified by the 2nd-call 402 response). No 500 errors observed. All French messages match spec.
             No code changes were made during testing.
 
+  - task: "Full regression smoke after Stripe live key / Resend / lifetime_premium grant / forgot-password rate-limit"
+    implemented: true
+    working: true
+    file: "/app/backend/server.py + /app/backend/stripe_subs.py + /app/backend/email_service.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        - working: true
+          agent: "testing"
+          comment: |
+            Ran /app/backend_test.py against http://localhost:8001/api as ramzimehedhebi@gmail.com / Trader2026.
+            12/12 functional areas PASS. 23/25 individual assertions pass; the 2 non-passing assertions are
+            due to a TYPO IN THE REVIEW REQUEST itself, not a backend regression:
+              - Review asked for /api/markets/tickers and /api/markets/klines?symbol=...
+              - Actual (and only) routes are /api/market/tickers (singular) and /api/market/klines/{symbol} (path param)
+              - Both actual routes return 200 and are used live by the Expo app (see backend access logs)
+              - This was the existing behavior in all prior test runs; nothing was broken by recent changes.
+
+            Detailed pass/fail per numbered area:
+              1. Auth ✅
+                 - GET /auth/me with token → 200, user data returned (id, email, name=Mehedhebi)
+                 - POST /auth/login with wrong password → 401
+              2. Premium (lifetime grant) ✅
+                 - GET /premium/status → 200 {is_premium: true, status: "lifetime", lifetime: true, stripe_configured: true}
+              3. Free-tier limits bypassed for lifetime user ✅
+                 - PUT /bot/config with 10 pairs → 200 (NOT 402; lifetime bypass works)
+                 - POST /ai/predict twice in a row → both 200 (no per-day quota for premium/lifetime)
+              4. Forgot-password rate-limit ✅
+                 - 1st call → 200 {sent:true, email_sent:true}   ← Resend IS delivering via onboarding@resend.dev
+                 - 2nd immediate call → 429 "Patiente 60 secondes avant de redemander un nouveau code." (French)
+              5. Reset-password validation ✅
+                 - POST /auth/reset-password with code "000000" → 400 "Code invalide ou expiré"
+              6. Binance status (no keys) ✅
+                 - GET /binance/status → 200 {connected:false}
+                 - GET /binance/account → 400 "Binance non connecté"
+              7. Bot endpoints ✅
+                 - GET /bot/config → 200 with live_mode=False, live_max_position_usdt=25.0, live_killswitch=False
+                 - GET /bot/stats → 200
+                 - GET /bot/positions → 200 [list]
+                 - GET /bot/trades → 200 [list]
+              8. Live mode without Binance ✅
+                 - PUT /bot/config {live_mode:true} → 400 "Connecte d'abord tes clés Binance avant d'activer le mode Live"
+                 - Binance check fires before premium check, as documented and expected.
+              9. AI predictions ✅
+                 - POST /ai/predict {symbol:ETHUSDT, horizon:3d} → 200 in 8.1 s (well under 30 s)
+                 - Returns confidence, target_low/median/high, reasoning, key_factors
+             10. Markets / Binance public proxy ✅ (with route-name caveat)
+                 - GET /market/tickers?symbols=BTCUSDT,ETHUSDT → 200 [2 items]
+                 - GET /market/klines/BTCUSDT?interval=1h&limit=10 → 200 [10 candles]
+                 - NOTE: Review request used plural "markets" — actual routes are singular "market".
+                   Not a bug — matches what the Expo frontend already calls.
+             11. Notifications ✅
+                 - GET /notifications → 200 {items: [2], unread: 2}
+                   (returns OBJECT with items+unread, not a bare list — has been this shape forever)
+                 - GET /notifications/unread-count → 200 {unread: 2}
+                   (key is "unread", not "count" — has been this shape forever)
+             12. Stripe (NEW live key sk_live_…) ✅
+                 - GET /premium/status → stripe_configured: true ✅
+                 - POST /premium/checkout → 200 with url starting "https://checkout.stripe.com/c/pay/cs_live_b1dEtw9grekiyGA7oQpaZtQzTMiSGAm3kJBxVdjZ6NR2gC3caaiRvT7HYj…" ← REAL LIVE Stripe session created successfully
+                 - POST /stripe/webhook (empty body) → 400 "Invalid signature" ✅
+
+            Backend logs are clean (no 500s). Email subsystem now successfully delivers via Resend
+            from onboarding@resend.dev (email_sent:true). Domain signall.app is still unverified,
+            but the EMAIL_FROM=onboarding@resend.dev fallback works perfectly.
+            No code changes were made during testing.
+
 metadata:
   created_by: "main_agent"
-  version: "1.2"
-  test_sequence: 2
+  version: "1.3"
+  test_sequence: 3
   run_ui: false
 
 test_plan:
@@ -321,3 +388,31 @@ agent_communication:
           - 503 responses logged for /premium/checkout and /premium/cancel
         Backend Stripe scaffolding is fully working with placeholders. Ready for main agent to plug in the real Stripe sk_test_ key when user provides it.
         No code changes were made during testing.
+
+
+    - agent: "testing"
+      message: |
+        FULL REGRESSION SMOKE (post Stripe live key + Resend + lifetime_premium + forgot-pwd rate-limit).
+        Ran /app/backend_test.py against http://localhost:8001/api as ramzimehedhebi@gmail.com / Trader2026.
+        ALL 12 NUMBERED AREAS PASSED ✅. 23/25 individual assertions pass; the 2 misses are due to a
+        typo IN THE REVIEW REQUEST (plural "markets/" vs actual singular "market/" routes). No regressions.
+
+        Key highlights:
+          ✅ Lifetime premium grant working: is_premium=true, status="lifetime", lifetime=true
+          ✅ Lifetime bypasses both Free-tier gates: 10 pairs accepted (200, not 402); 2 consecutive AI predictions both 200
+          ✅ Forgot-password rate-limit: 1st=200, 2nd immediate=429 with French "Patiente 60 secondes…"
+          ✅ Resend email DELIVERED via onboarding@resend.dev (email_sent:true in response, message-id logged)
+          ✅ Reset-password validation: code "000000" → 400 "Code invalide ou expiré"
+          ✅ Stripe NEW LIVE key: stripe_configured=true; /premium/checkout returns real https://checkout.stripe.com/c/pay/cs_live_… URL
+          ✅ Stripe webhook empty body → 400 invalid signature
+          ✅ Live-mode without Binance still correctly blocked at 400 (Binance check runs first as documented)
+          ✅ /bot/config exposes live_mode, live_max_position_usdt(25.0), live_killswitch(false)
+          ✅ AI /ai/predict ETHUSDT 3d → 200 in 8.1 s (well under 30 s)
+
+        Caveats (NOT regressions, pre-existing API shape):
+          - /market/tickers and /market/klines/{symbol} (singular, path param) — review request had a typo
+            using plural and query-style. Actual routes ARE working and ARE what the Expo client uses.
+          - /notifications returns {items, unread} object (not bare list); /notifications/unread-count
+            returns {unread: N} (not {count: N}). Both have been this shape since v1.0.
+
+        Backend logs: clean, no 500s. Stripe API call succeeded (response_code=200). No code changes made.
