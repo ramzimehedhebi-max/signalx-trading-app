@@ -76,10 +76,7 @@ export default function PremiumScreen() {
   const onSubscribe = async () => {
     setBusy(true);
     try {
-      // Build the deep-link target that the bridge will redirect to (works in Expo Go AND prod app)
       const deepLink = Linking.createURL("premium");
-      // Stripe redirects to our HTTPS BRIDGE (Chrome blocks exp:// redirects from HTTPS).
-      // The bridge then JS-redirects to the deep link.
       const backend = process.env.EXPO_PUBLIC_BACKEND_URL || "";
       const successUrl = `${backend}/api/stripe/return?paid=1&target=${encodeURIComponent(deepLink)}`;
       const cancelUrl = `${backend}/api/stripe/return?paid=0&target=${encodeURIComponent(deepLink)}`;
@@ -88,9 +85,16 @@ export default function PremiumScreen() {
       if (Platform.OS === "web") {
         if (typeof window !== "undefined") window.location.href = sess.url;
       } else {
-        // openAuthSessionAsync handles both bridge redirect AND auto-close back to app
-        await WebBrowser.openAuthSessionAsync(sess.url, deepLink);
-        // After return (whether success/cancel/dismissed), refresh status
+        // Use openBrowserAsync (in-app Chrome Custom Tab). When user dismisses
+        // the browser (either after payment or by tapping back), we return here
+        // and start polling for Premium activation.
+        await WebBrowser.openBrowserAsync(sess.url, {
+          dismissButtonStyle: "close",
+          presentationStyle: WebBrowser.WebBrowserPresentationStyle.PAGE_SHEET,
+          enableBarCollapsing: true,
+        });
+        // After browser closes, show success-pending banner and poll status
+        setPostPayBanner("success");
         await loadStatus();
       }
     } catch (e: any) {
@@ -176,6 +180,14 @@ export default function PremiumScreen() {
               <Text style={styles.bannerSub}>
                 Activation Premium en cours… Cela prend généralement 5 à 15 secondes.
               </Text>
+              <TouchableOpacity
+                onPress={loadStatus}
+                style={styles.refreshBtn}
+                hitSlop={8}
+              >
+                <Ionicons name="refresh" size={14} color={theme.colors.success} />
+                <Text style={styles.refreshText}>Vérifier maintenant</Text>
+              </TouchableOpacity>
             </View>
           </View>
         )}
@@ -358,6 +370,18 @@ const styles = StyleSheet.create({
   },
   bannerTitle: { color: "#fff", fontWeight: "800", fontSize: 14 },
   bannerSub: { color: theme.colors.textSecondary, fontSize: 12, marginTop: 2 },
+  refreshBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    marginTop: 8,
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    borderRadius: 8,
+    backgroundColor: "rgba(0,227,150,0.12)",
+    alignSelf: "flex-start",
+  },
+  refreshText: { color: theme.colors.success, fontSize: 12, fontWeight: "700" },
 
   hero: {
     borderRadius: 22,

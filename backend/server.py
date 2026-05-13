@@ -990,27 +990,32 @@ _BRIDGE_HTML = """<!doctype html>
 <style>
   html,body{margin:0;background:#0B0B10;color:#fff;font-family:-apple-system,Segoe UI,Roboto,sans-serif;height:100%;}
   .wrap{height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px;text-align:center;gap:16px;}
-  .ring{width:64px;height:64px;border-radius:50%;border:3px solid rgba(243,186,47,0.2);border-top-color:#F3BA2F;animation:spin 0.9s linear infinite;}
-  @keyframes spin{to{transform:rotate(360deg);}}
-  h1{font-size:22px;margin:0;}
-  p{color:#999;margin:0;font-size:14px;max-width:280px;line-height:1.5;}
-  a.btn{margin-top:18px;display:inline-block;padding:12px 22px;background:#F3BA2F;color:#000;font-weight:800;border-radius:999px;text-decoration:none;}
-  .small{color:#666;font-size:12px;margin-top:24px;}
+  .check{width:84px;height:84px;border-radius:50%;background:rgba(0,227,150,0.15);border:2px solid rgba(0,227,150,0.4);display:flex;align-items:center;justify-content:center;font-size:48px;color:#00E396;}
+  .cancel{width:84px;height:84px;border-radius:50%;background:rgba(255,69,96,0.12);border:2px solid rgba(255,69,96,0.35);display:flex;align-items:center;justify-content:center;font-size:48px;color:#FF4560;}
+  h1{font-size:24px;margin:0;font-weight:900;}
+  p{color:#bbb;margin:0;font-size:15px;max-width:320px;line-height:1.55;}
+  .hint{background:rgba(243,186,47,0.12);border:1px solid rgba(243,186,47,0.35);padding:14px 16px;border-radius:14px;font-size:14px;color:#fff;max-width:340px;line-height:1.5;}
+  .hint b{color:#F3BA2F;}
+  a.btn{display:inline-block;padding:14px 26px;background:#F3BA2F;color:#000;font-weight:800;border-radius:999px;text-decoration:none;font-size:15px;}
+  .small{color:#666;font-size:12px;margin-top:8px;line-height:1.5;}
 </style>
 </head><body>
 <div class="wrap">
-  <div class="ring"></div>
+  <div class="__ICON_CLASS__">__ICON__</div>
   <h1>__TITLE__</h1>
   <p>__MSG__</p>
-  <a id="back" class="btn" href="__DEEPLINK__">Retour à l'app</a>
-  <div class="small">Si rien ne se passe, appuie sur le bouton ci-dessus.</div>
+  <div class="hint">
+    👉 <b>Ferme cet onglet</b> et reviens dans l'app SignalX.<br/>
+    L'activation est automatique sur ton compte.
+  </div>
+  <a id="back" class="btn" href="__DEEPLINK__">Retour à SignalX</a>
+  <div class="small">Astuce : appuie sur la flèche "retour" de ton téléphone<br/>pour revenir directement dans l'app.</div>
 </div>
 <script>
   var DEEPLINK = "__DEEPLINK__";
   // Try to deep-link automatically right away
-  setTimeout(function(){ window.location.href = DEEPLINK; }, 250);
-  // Some browsers need a user gesture; tap anywhere triggers it
-  document.body.addEventListener('click', function(){ window.location.href = DEEPLINK; });
+  setTimeout(function(){ try { window.location.href = DEEPLINK; } catch(e){} }, 300);
+  document.body.addEventListener('click', function(){ try { window.location.href = DEEPLINK; } catch(e){} });
 </script>
 </body></html>"""
 
@@ -1026,21 +1031,26 @@ async def stripe_return(
     """
     import urllib.parse
     deeplink = urllib.parse.unquote(target) if target else "signalx://premium"
-    # Append query params
     sep = "&" if "?" in deeplink else "?"
     deeplink = f"{deeplink}{sep}paid={paid}"
     if session_id:
         deeplink += f"&session_id={urllib.parse.quote(session_id)}"
     if paid == "1":
-        title = "Paiement reçu ✓"
-        msg = "Activation Premium en cours… On te ramène dans l'app SignalX."
+        title = "Paiement reçu !"
+        msg = "Ton abonnement Premium SignalX est en cours d'activation. Cela prend environ 5 à 15 secondes."
+        icon_class = "check"
+        icon = "✓"
     else:
         title = "Paiement annulé"
-        msg = "Aucun montant n'a été débité. On te ramène dans l'app SignalX."
+        msg = "Aucun montant n'a été débité. Tu peux réessayer à tout moment depuis l'app."
+        icon_class = "cancel"
+        icon = "✕"
     html = (
         _BRIDGE_HTML
         .replace("__TITLE__", title)
         .replace("__MSG__", msg)
+        .replace("__ICON__", icon)
+        .replace("__ICON_CLASS__", icon_class)
         .replace("__DEEPLINK__", deeplink)
     )
     return HTMLResponse(content=html)
