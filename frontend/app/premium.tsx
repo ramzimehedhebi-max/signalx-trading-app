@@ -242,7 +242,7 @@ export default function PremiumScreen() {
             {isPremium ? "MEMBRE PREMIUM" : "DÉBLOQUE TOUT LE POTENTIEL"}
           </Text>
           <Text style={styles.heroTitle}>
-            {isPremium ? "Tu profites de tous les avantages" : "SignalX Premium"}
+            {isPremium ? (status?.lifetime ? "Premium à vie 🎉" : "Tu profites de tous les avantages") : "SignalX Premium"}
           </Text>
           {!isPremium && (
             <View style={styles.priceRow}>
@@ -250,7 +250,10 @@ export default function PremiumScreen() {
               <Text style={styles.pricePer}>/mois</Text>
             </View>
           )}
-          {isPremium && periodEnd && (
+          {isPremium && status?.lifetime && (
+            <Text style={styles.heroSub}>Accès permanent débloqué — aucun paiement requis 🚀</Text>
+          )}
+          {isPremium && periodEnd && !status?.lifetime && (
             <Text style={styles.heroSub}>
               {willCancel
                 ? `Accès jusqu'au ${periodEnd.toLocaleDateString("fr-FR")}`
