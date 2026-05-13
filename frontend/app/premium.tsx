@@ -83,17 +83,25 @@ export default function PremiumScreen() {
       const sess = await api.premiumCheckout(successUrl, cancelUrl);
       if (!sess?.url) throw new Error("URL Stripe manquante");
       if (Platform.OS === "web") {
-        if (typeof window !== "undefined") window.location.href = sess.url;
+        // Open in a NEW tab so Stripe Checkout works even when our preview is embedded in an iframe
+        if (typeof window !== "undefined") {
+          const popup = window.open(sess.url, "_blank", "noopener,noreferrer");
+          if (!popup) {
+            // Popup blocked → fall back to same-tab navigation
+            window.location.href = sess.url;
+          }
+        }
+        // Show pending banner regardless
+        setPostPayBanner("success");
+        // Start polling for activation
+        const t = setInterval(loadStatus, 3000);
+        setTimeout(() => clearInterval(t), 60000);
       } else {
-        // Use openBrowserAsync (in-app Chrome Custom Tab). When user dismisses
-        // the browser (either after payment or by tapping back), we return here
-        // and start polling for Premium activation.
         await WebBrowser.openBrowserAsync(sess.url, {
           dismissButtonStyle: "close",
           presentationStyle: WebBrowser.WebBrowserPresentationStyle.PAGE_SHEET,
           enableBarCollapsing: true,
         });
-        // After browser closes, show success-pending banner and poll status
         setPostPayBanner("success");
         await loadStatus();
       }
