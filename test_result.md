@@ -900,3 +900,55 @@ agent_communication:
         No backend changes. Backend still healthy (bot engine just executed TRAIL ACTIVATED + PARTIAL TP
         on LINKUSDT at 15:44 — proves the advanced features are live).
 
+    - agent: "main"
+      message: |
+        🔧 BUG FIX — Binance API key not being saved (user reported "ça ne garde pas en mémoire")
+
+        ROOT CAUSE:
+        The cloud server's IP is geo-blocked by Binance (HTTP 451 from api.binance.com).
+        The previous /binance/connect implementation validated keys via Binance's signed REST API
+        BEFORE storing them. Since the validation always failed → 400 Bad Request → keys never reached
+        the DB. User saw the "Failed" alert every time and assumed the storage was broken.
+
+        FIX APPLIED:
+
+        1. /app/backend/binance_live.py — Added automatic endpoint cascading.
+           - BINANCE_LIVE_BASES list with 6 mirrors: api.binance.com, api-gcp.binance.com,
+             api1-4.binance.com
+           - Both _signed_get() and _signed_post() now try each base sequentially:
+             - HTTP 451/403/418/429/503 → try next mirror
+             - Network errors → try next mirror
+             - HTTP 200 → promote this mirror as new primary (memoized)
+             - Other status → bubble up (real auth/signature errors)
+           - Final error if all fail: "All Binance endpoints unreachable"
+
+        2. /app/backend/routes/binance.py — POST /binance/connect now supports ?force=true
+           - WITHOUT force: validates keys against Binance.
+             - geo-block detected → HTTP 503 with detail prefixed "GEO_BLOCKED|<msg>"
+             - bad keys (-2014/-2015/Signature/401) → HTTP 400 with French explanation
+             - IP whitelist → HTTP 400 with French explanation
+           - WITH force=true: skips validation entirely, encrypts & stores keys with
+             {binance_unverified: true} flag. Bot will verify on first order attempt.
+
+        3. /app/frontend/src/lib/api.ts — binanceConnect now accepts optional force boolean.
+
+        4. /app/frontend/app/binance-connect.tsx — Refactored onConnect → doConnect(force).
+           - On HTTP 503 / "GEO_BLOCKED" → show Alert dialog:
+             "⚠️ Binance non joignable depuis le serveur"
+             "Notre serveur cloud est temporairement bloqué par Binance (restriction géographique).
+              Tu peux sauvegarder tes clés quand même — chiffrées AES-128."
+             [Annuler] [Sauvegarder quand même] (calls doConnect(true))
+           - On success with unverified flag → distinct success alert mentioning
+             "Le bot tentera de les valider à sa prochaine exécution".
+
+        TESTING (deep_testing_backend_v2 — 14/14 PASSED):
+        - Short keys → 400 "Clés invalides" ✅
+        - Valid-format fake keys WITHOUT force → 503 GEO_BLOCKED ✅
+        - Valid-format keys WITH force=true → 200 {unverified:true} + DB has all 5 fields ✅
+        - GET /binance/status after force-save → connected:true ✅
+        - DELETE /binance/disconnect after force-save → clears all fields ✅
+        - No 500 errors. 6 mirrors all returned 451 as expected.
+
+        User can now save keys even from the geo-blocked cloud server. The bot will
+        either succeed (if mirrors become unblocked) or surface notification on failure.
+
