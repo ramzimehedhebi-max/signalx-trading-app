@@ -774,3 +774,40 @@ agent_communication:
 
         No backend changes. Bot engine still healthy (logs show BOT DIVERSIF + BOT SCAN every 5 min).
 
+
+    - agent: "main"
+      message: |
+        🎬 INTERACTIVE TUTORIAL — Replaces the YouTube video placeholder with a full Duolingo-style
+        in-app onboarding (no external video needed).
+
+        Files created:
+        - /app/frontend/app/tutorial.tsx (538 lines) — 8 slides, swipe gesture, animated emojis (spring + bounce),
+          gradient backgrounds, animated badges, progress bar + dots, optional French TTS via expo-speech.
+          Persists "seen" state in AsyncStorage (@signalx_tutorial_seen_v1).
+
+        Files updated:
+        - /app/frontend/app/help.tsx — Replaced YouTube VideoTutorial component with new interactive CTA card
+          ("🎬 Tutoriel interactif — Visite guidée en 8 étapes — 3 minutes"). Removed unused TUTORIAL_VIDEO_ID
+          and Platform import. Added tutorialCta + related styles.
+        - /app/frontend/src/i18n/locales/fr.json + en.json — Added "tutorial" namespace with 8 slides
+          (title + text + 1-4 badges each), launch CTA, navigation labels, swipe hint. Other 6 languages
+          will fall back to EN via i18n's fallbackLng.
+
+        New dependency: expo-speech@14.0.8 (SDK 54 compatible).
+
+        Visual validation via screenshot in mobile viewport 390x844:
+        ✅ Scene 1 (rocket 🚀) — gradient red/purple, glow, "Welcome to SignalX"
+        ✅ Scene 3 (deposit 💰) — orange/gold, 3 badges (Card, SEPA, Crypto wallet)
+        ✅ Scene 4 (link 🔗) — security warnings, red accent on Next button
+        ✅ Scene 5 (bot 🤖) — Paper mode setup, 3 advanced features badges
+        ✅ Scene 8 (target 🎯) — green Done button, recap, all 8 dots filled
+        ✅ Help page — new CTA card "🎬 Interactive Tutorial" with launch button, replaces YouTube placeholder
+
+        UX features:
+        - Swipe horizontally to navigate between slides (>80px threshold)
+        - Tap volume icon to toggle French/English TTS voice-over
+        - Close button (X) skips the tutorial and saves "seen" state
+        - Dots indicator at bottom shows current position (active dot is wider + accent color)
+        - First slide shows swipe hint at bottom
+
+        No backend changes. No regression: existing /help page still functions, all sections preserved.

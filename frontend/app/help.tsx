@@ -6,7 +6,6 @@ import {
   ScrollView,
   TouchableOpacity,
   Linking,
-  Platform,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
@@ -14,9 +13,8 @@ import { useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
 import { theme } from "../src/theme";
 
-// 🎥 YouTube video tutorial — paste the YouTube video ID once recorded
-// Get it from https://www.youtube.com/watch?v=THIS_PART
-const TUTORIAL_VIDEO_ID = ""; // e.g. "dQw4w9WgXcQ" — leave empty to show coming-soon placeholder
+// 🎬 The video tutorial has been replaced by an interactive in-app onboarding
+// (see /app/frontend/app/tutorial.tsx). No external video needed.
 
 export default function HelpScreen() {
   const router = useRouter();
@@ -198,48 +196,27 @@ export default function HelpScreen() {
 }
 
 function VideoTutorial({ t }: { t: any }) {
-  if (!TUTORIAL_VIDEO_ID) {
-    return (
-      <View style={styles.videoPlaceholder}>
-        <View style={styles.videoPlay}>
-          <Ionicons name="play" size={28} color={theme.colors.primary} />
-        </View>
-        <Text style={styles.videoSoonTitle}>{t("help.video.coming_soon")}</Text>
-        <Text style={styles.videoSoonText}>{t("help.video.coming_soon_desc")}</Text>
-      </View>
-    );
-  }
-  const embedUrl = `https://www.youtube.com/embed/${TUTORIAL_VIDEO_ID}`;
-  const watchUrl = `https://www.youtube.com/watch?v=${TUTORIAL_VIDEO_ID}`;
+  const router = useRouter();
   return (
-    <View style={styles.videoCard}>
-      <Text style={styles.videoTitle}>🎬 {t("help.video.watch_title")}</Text>
-      {Platform.OS === "web" ? (
-        <View style={styles.videoFrameWrap}>
-          {React.createElement("iframe" as any, {
-            src: embedUrl,
-            style: { width: "100%", aspectRatio: "16 / 9", border: 0, borderRadius: 12 },
-            allow: "accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture",
-            allowFullScreen: true,
-          })}
+    <TouchableOpacity
+      onPress={() => router.push("/tutorial")}
+      style={styles.tutorialCta}
+      activeOpacity={0.9}
+      testID="help-launch-tutorial"
+    >
+      <View style={styles.tutorialIconWrap}>
+        <Text style={styles.tutorialEmoji}>🎬</Text>
+        <View style={styles.tutorialPulse} />
+      </View>
+      <View style={{ flex: 1 }}>
+        <Text style={styles.tutorialTitle}>{t("tutorial.launch_title")}</Text>
+        <Text style={styles.tutorialSub}>{t("tutorial.launch_sub")}</Text>
+        <View style={styles.tutorialStartRow}>
+          <Text style={styles.tutorialStartText}>{t("tutorial.launch_cta")}</Text>
+          <Ionicons name="arrow-forward" size={14} color={theme.colors.primary} />
         </View>
-      ) : (
-        <TouchableOpacity
-          onPress={() => Linking.openURL(watchUrl)}
-          style={styles.videoMobileCta}
-          activeOpacity={0.85}
-        >
-          <View style={styles.videoPlay}>
-            <Ionicons name="play" size={26} color={theme.colors.primary} />
-          </View>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.videoMobileTitle}>{t("help.video.watch_on_youtube")}</Text>
-            <Text style={styles.videoMobileSub}>{t("help.video.duration_label")}</Text>
-          </View>
-          <Ionicons name="open-outline" size={18} color={theme.colors.primary} />
-        </TouchableOpacity>
-      )}
-    </View>
+      </View>
+    </TouchableOpacity>
   );
 }
 
@@ -436,4 +413,47 @@ const styles = StyleSheet.create({
   },
   videoSoonTitle: { color: "#fff", fontSize: 14, fontWeight: "800", textAlign: "center" },
   videoSoonText: { color: theme.colors.textSecondary, fontSize: 12, marginTop: 6, textAlign: "center", lineHeight: 17 },
+
+  // Interactive tutorial CTA card
+  tutorialCta: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 14,
+    padding: 16,
+    borderRadius: 18,
+    backgroundColor: theme.colors.primary + "12",
+    borderColor: theme.colors.primary + "40",
+    borderWidth: 1,
+  },
+  tutorialIconWrap: {
+    width: 62,
+    height: 62,
+    borderRadius: 18,
+    backgroundColor: theme.colors.primary + "22",
+    alignItems: "center",
+    justifyContent: "center",
+    position: "relative",
+  },
+  tutorialEmoji: { fontSize: 32, zIndex: 2 },
+  tutorialPulse: {
+    position: "absolute",
+    width: 62,
+    height: 62,
+    borderRadius: 18,
+    borderWidth: 2,
+    borderColor: theme.colors.primary + "60",
+  },
+  tutorialTitle: { color: "#fff", fontSize: 15, fontWeight: "900" },
+  tutorialSub: { color: theme.colors.textSecondary, fontSize: 12, marginTop: 4, lineHeight: 17 },
+  tutorialStartRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    marginTop: 8,
+  },
+  tutorialStartText: {
+    color: theme.colors.primary,
+    fontSize: 12,
+    fontWeight: "800",
+  },
 });

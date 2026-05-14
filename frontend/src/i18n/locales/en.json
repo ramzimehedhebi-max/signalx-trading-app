@@ -624,5 +624,62 @@
       "b": "No, crypto trading involves risk",
       "c": "Yes, but only with Premium"
     }
+  },
+  "tutorial": {
+    "launch_title": "🎬 Interactive Tutorial",
+    "launch_sub": "Guided 8-step tour — 3 minutes to understand everything",
+    "launch_cta": "Start tutorial",
+    "next": "Next",
+    "prev": "Back",
+    "finish": "Done",
+    "swipe_hint": "Swipe to navigate",
+    "s1": {
+      "title": "Welcome to SignalX 🚀",
+      "text": "You're about to discover how an AI bot can trade for you on Binance, 24/7, safely. Three minutes, and you'll be ready."
+    },
+    "s2": {
+      "title": "The golden rule: your security",
+      "text": "SignalX NEVER holds your money. Your funds stay 100% on your Binance account. We just send orders via secure API keys.",
+      "badge1": "🔐 Your funds stay with YOU",
+      "badge2": "❌ API keys without withdrawal permission"
+    },
+    "s3": {
+      "title": "Step 1 — Deposit on Binance",
+      "text": "Put money on Binance first. Three options, from easiest to cheapest:",
+      "badge1": "💳 Bank card — instant, 2% fees",
+      "badge2": "🏦 SEPA transfer — 1-2 days, FREE ⭐",
+      "badge3": "₿ From another crypto wallet"
+    },
+    "s4": {
+      "title": "Step 2 — Connect Binance",
+      "text": "Create API keys on Binance and paste them in SignalX. WATCH permissions:",
+      "badge1": "✅ Spot & Margin Trading ONLY",
+      "badge2": "❌ NEVER Withdrawals or Universal Transfer"
+    },
+    "s5": {
+      "title": "Step 3 — Launch bot in Paper mode",
+      "text": "The bot trades in simulation with 1000 virtual USDT — no real money. Watch 1-2 weeks before going live.",
+      "badge1": "🧪 Paper mode = zero risk",
+      "badge2": "🤖 Stop-loss 3% • Take-profit 8-10%",
+      "badge3": "📊 Diversification + Trailing TP active"
+    },
+    "s6": {
+      "title": "Live mode — Real money",
+      "text": "Once comfortable, go Live. You'll need to pass a 5/5 quiz to unlock. Default limit: $50 per trade.",
+      "badge1": "⚠️ Mandatory quiz before activation"
+    },
+    "s7": {
+      "title": "Withdraw your gains anytime",
+      "text": "SignalX doesn't handle your withdrawals — you stay the owner. Get your money directly on Binance:",
+      "badge1": "1️⃣ Binance → Spot Wallet",
+      "badge2": "2️⃣ Convert USDT → EUR",
+      "badge3": "3️⃣ Withdraw → SEPA transfer",
+      "badge4": "4️⃣ Received in 1-2 days, FREE"
+    },
+    "s8": {
+      "title": "You're ready to trade! 🎯",
+      "text": "Recap: Deposit → Connect → Paper Bot → Quiz → Live. Trading involves risk, only trade what you can afford to lose.",
+      "badge1": "💡 Help & Support always available in your Profile"
+    }
   }
 }

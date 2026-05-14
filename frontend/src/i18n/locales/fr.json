@@ -624,5 +624,62 @@
       "b": "Non, le trading crypto comporte des risques",
       "c": "Oui, mais seulement avec Premium"
     }
+  },
+  "tutorial": {
+    "launch_title": "🎬 Tutoriel interactif",
+    "launch_sub": "Visite guidée en 8 étapes — 3 minutes pour tout comprendre",
+    "launch_cta": "Démarrer le tutoriel",
+    "next": "Suivant",
+    "prev": "Retour",
+    "finish": "Terminer",
+    "swipe_hint": "Swipe pour naviguer",
+    "s1": {
+      "title": "Bienvenue sur SignalX 🚀",
+      "text": "Tu vas découvrir comment un bot IA peut trader pour toi sur Binance, 24h/24, en toute sécurité. Trois minutes, et tu seras prêt."
+    },
+    "s2": {
+      "title": "La règle d'or : ta sécurité",
+      "text": "SignalX ne stocke JAMAIS ton argent. Tes fonds restent à 100 % sur ton compte Binance. On envoie juste des ordres via des clés API sécurisées.",
+      "badge1": "🔐 Tes fonds restent chez TOI",
+      "badge2": "❌ Clés API sans permission de retrait"
+    },
+    "s3": {
+      "title": "Étape 1 — Dépose sur Binance",
+      "text": "Mets de l'argent sur Binance d'abord. Trois options, du plus simple au moins cher :",
+      "badge1": "💳 Carte bancaire — instantané, 2% frais",
+      "badge2": "🏦 Virement SEPA — 1-2 jours, GRATUIT ⭐",
+      "badge3": "₿ Depuis un autre wallet crypto"
+    },
+    "s4": {
+      "title": "Étape 2 — Connecte Binance",
+      "text": "Crée des clés API sur Binance et colle-les dans SignalX. ATTENTION aux permissions :",
+      "badge1": "✅ Spot & Margin Trading UNIQUEMENT",
+      "badge2": "❌ JAMAIS Withdrawals ni Universal Transfer"
+    },
+    "s5": {
+      "title": "Étape 3 — Lance le Bot en mode Paper",
+      "text": "Le bot trade en simulation avec 1000 USDT virtuels — aucun argent réel. Observe 1-2 semaines avant de passer en réel.",
+      "badge1": "🧪 Mode Paper = zéro risque",
+      "badge2": "🤖 Stop-loss 3% • Take-profit 8-10%",
+      "badge3": "📊 Diversification + Trailing TP actifs"
+    },
+    "s6": {
+      "title": "Mode Live — Argent réel",
+      "text": "Une fois à l'aise, passe en Live. Tu devras réussir un mini-quiz 5/5 pour débloquer. Limite par défaut : 50 $ par trade.",
+      "badge1": "⚠️ Quiz obligatoire avant activation"
+    },
+    "s7": {
+      "title": "Retire tes gains quand tu veux",
+      "text": "SignalX ne gère pas tes retraits — tu restes propriétaire. Récupère ton argent directement sur Binance :",
+      "badge1": "1️⃣ Binance → Spot Wallet",
+      "badge2": "2️⃣ Convertir USDT → EUR",
+      "badge3": "3️⃣ Retrait → Virement SEPA",
+      "badge4": "4️⃣ Reçu en 1-2 jours, GRATUIT"
+    },
+    "s8": {
+      "title": "Tu es prêt à trader ! 🎯",
+      "text": "Récap : Dépose → Connecte → Bot Paper → Quiz → Live. Le trading comporte des risques, trade ce que tu peux te permettre de perdre.",
+      "badge1": "💡 Aide & Support toujours dispo dans ton Profil"
+    }
   }
 }
