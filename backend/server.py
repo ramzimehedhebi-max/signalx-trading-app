@@ -1521,6 +1521,166 @@ async def bot_run_now(user=Depends(get_current_user)):
     return {"ok": True}
 
 
+@api_router.get("/bot/analytics")
+async def bot_get_analytics(user=Depends(get_current_user)):
+    """Deep analytics for the P&L dashboard.
+    Returns: equity curve, win-rate breakdown, best/worst, drawdown, top symbols.
+    """
+    cfg = await _get_or_create_bot_config(user["id"])
+    capital_start = float(cfg.get("capital_usdt", 1000.0))
+    trades = await db.bot_trades.find(
+        {"user_id": user["id"]}, {"_id": 0}
+    ).to_list(2000)
+    open_positions = await db.bot_positions.find(
+        {"user_id": user["id"], "status": "open"}, {"_id": 0}
+    ).to_list(100)
+
+    # Sort trades chronologically
+    def _exit_dt(t):
+        v = t.get("exit_time") or t.get("entry_time")
+        if isinstance(v, datetime):
+            return v.replace(tzinfo=timezone.utc) if v.tzinfo is None else v
+        return datetime.now(timezone.utc)
+    trades.sort(key=_exit_dt)
+
+    # ---- Equity curve (cumulative pnl by trade) ----
+    equity_points: list[dict] = [{"t": None, "equity": capital_start, "pnl": 0.0}]
+    running = capital_start
+    realized = 0.0
+    for t in trades:
+        running += t["pnl"]
+        realized += t["pnl"]
+        equity_points.append({
+            "t": _exit_dt(t).isoformat(),
+            "equity": round(running, 2),
+            "pnl": round(t["pnl"], 2),
+        })
+
+    # ---- Unrealized P&L on open positions ----
+    unrealized = 0.0
+    open_pos_details: list[dict] = []
+    if open_positions:
+        symbols = list({p["symbol"] for p in open_positions})
+        try:
+            async with httpx.AsyncClient(timeout=8.0) as cli:
+                r = await cli.get(
+                    f"{BINANCE_BASE}/api/v3/ticker/price",
+                    params={"symbols": json.dumps(symbols, separators=(",", ":"))},
+                )
+                if r.status_code == 200:
+                    prices = {x["symbol"]: float(x["price"]) for x in r.json()}
+                    for p in open_positions:
+                        cp = prices.get(p["symbol"], p["entry_price"])
+                        unrl = (cp - p["entry_price"]) * p["quantity"]
+                        unrealized += unrl
+                        open_pos_details.append({
+                            "symbol": p["symbol"],
+                            "qty": p["quantity"],
+                            "entry": p["entry_price"],
+                            "current": cp,
+                            "pnl": round(unrl, 2),
+                            "pnl_pct": round((cp - p["entry_price"]) / p["entry_price"] * 100, 2),
+                        })
+        except Exception:
+            pass
+
+    # ---- Win-rate breakdown ----
+    wins = [t for t in trades if t["pnl"] > 0]
+    losses = [t for t in trades if t["pnl"] < 0]
+    breakevens = [t for t in trades if t["pnl"] == 0]
+    win_rate = (len(wins) / len(trades) * 100) if trades else 0.0
+
+    avg_win = (sum(t["pnl"] for t in wins) / len(wins)) if wins else 0.0
+    avg_loss = (sum(t["pnl"] for t in losses) / len(losses)) if losses else 0.0
+    profit_factor = (abs(sum(t["pnl"] for t in wins)) / abs(sum(t["pnl"] for t in losses))) if losses and sum(t["pnl"] for t in losses) != 0 else None
+
+    # ---- Best / worst trade ----
+    best = max(trades, key=lambda t: t["pnl"]) if trades else None
+    worst = min(trades, key=lambda t: t["pnl"]) if trades else None
+
+    # ---- Max drawdown (from peak equity) ----
+    peak = capital_start
+    max_dd = 0.0
+    max_dd_pct = 0.0
+    for pt in equity_points:
+        eq = pt["equity"]
+        if eq > peak:
+            peak = eq
+        dd = peak - eq
+        if dd > max_dd:
+            max_dd = dd
+            max_dd_pct = (dd / peak * 100) if peak > 0 else 0.0
+
+    # ---- Top profitable symbols (realized) ----
+    by_symbol: dict[str, dict] = {}
+    for t in trades:
+        s = t["symbol"]
+        if s not in by_symbol:
+            by_symbol[s] = {"symbol": s, "pnl": 0.0, "trades": 0, "wins": 0}
+        by_symbol[s]["pnl"] += t["pnl"]
+        by_symbol[s]["trades"] += 1
+        if t["pnl"] > 0:
+            by_symbol[s]["wins"] += 1
+    top_symbols = sorted(by_symbol.values(), key=lambda x: x["pnl"], reverse=True)[:5]
+    worst_symbols = sorted(by_symbol.values(), key=lambda x: x["pnl"])[:3]
+    for s in top_symbols + worst_symbols:
+        s["pnl"] = round(s["pnl"], 2)
+        s["win_rate"] = round(s["wins"] / s["trades"] * 100, 0) if s["trades"] else 0
+
+    # ---- Trades by exit reason ----
+    by_reason: dict[str, int] = {}
+    for t in trades:
+        by_reason[t["exit_reason"]] = by_reason.get(t["exit_reason"], 0) + 1
+
+    # ---- Average duration of closed trades ----
+    avg_duration_hours = 0.0
+    if trades:
+        durations: list[float] = []
+        for t in trades:
+            et = t.get("entry_time")
+            xt = t.get("exit_time")
+            if isinstance(et, datetime) and isinstance(xt, datetime):
+                et = et.replace(tzinfo=timezone.utc) if et.tzinfo is None else et
+                xt = xt.replace(tzinfo=timezone.utc) if xt.tzinfo is None else xt
+                durations.append((xt - et).total_seconds() / 3600)
+        if durations:
+            avg_duration_hours = sum(durations) / len(durations)
+
+    return {
+        "capital_start": round(capital_start, 2),
+        "capital_current": round(capital_start + realized + unrealized, 2),
+        "realized_pnl": round(realized, 2),
+        "unrealized_pnl": round(unrealized, 2),
+        "total_pnl": round(realized + unrealized, 2),
+        "total_pnl_pct": round((realized + unrealized) / capital_start * 100, 2) if capital_start > 0 else 0,
+        "trades_count": len(trades),
+        "wins": len(wins),
+        "losses": len(losses),
+        "breakevens": len(breakevens),
+        "win_rate_pct": round(win_rate, 1),
+        "avg_win": round(avg_win, 2),
+        "avg_loss": round(avg_loss, 2),
+        "profit_factor": round(profit_factor, 2) if profit_factor else None,
+        "best_trade": {
+            "symbol": best["symbol"], "pnl": round(best["pnl"], 2),
+            "pnl_pct": round(best["pnl_pct"], 2),
+        } if best else None,
+        "worst_trade": {
+            "symbol": worst["symbol"], "pnl": round(worst["pnl"], 2),
+            "pnl_pct": round(worst["pnl_pct"], 2),
+        } if worst else None,
+        "max_drawdown": round(max_dd, 2),
+        "max_drawdown_pct": round(max_dd_pct, 2),
+        "avg_duration_hours": round(avg_duration_hours, 1),
+        "top_symbols": top_symbols,
+        "worst_symbols": worst_symbols,
+        "by_reason": by_reason,
+        "equity_curve": equity_points,
+        "open_positions": open_pos_details,
+        "open_positions_count": len(open_positions),
+    }
+
+
 class BacktestReq(BaseModel):
     days: int = 30
     capital_usdt: float = 1000.0

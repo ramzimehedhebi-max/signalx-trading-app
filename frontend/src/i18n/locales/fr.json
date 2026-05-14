@@ -235,7 +235,8 @@
     "errors": {
       "toggle_failed": "Impossible de modifier le bot",
       "enable_live_failed": "Impossible d'activer le mode Live"
-    }
+    },
+    "see_full_analytics": "Voir le dashboard P&L complet"
   },
   "profile": {
     "title": "Profil",
@@ -430,5 +431,31 @@
     "it": "Italiano",
     "pt": "Português (BR)",
     "zh": "中文"
+  },
+  "pnl": {
+    "title": "Tableau P&L",
+    "current_capital": "CAPITAL ACTUEL",
+    "realized": "RÉALISÉ",
+    "unrealized": "LATENT",
+    "equity_curve": "Évolution du capital",
+    "trades": "trades",
+    "from": "De",
+    "to": "À",
+    "win_rate_breakdown": "Répartition gains/pertes",
+    "wins": "Gains",
+    "losses": "Pertes",
+    "breakeven": "Égalité",
+    "avg_win": "GAIN MOYEN",
+    "avg_loss": "PERTE MOY.",
+    "profit_factor": "PROFIT FACTOR",
+    "avg_duration": "DURÉE MOY.",
+    "best_trade": "MEILLEUR",
+    "worst_trade": "PIRE",
+    "max_drawdown": "Drawdown max",
+    "max_drawdown_desc": "Plus grosse chute depuis un sommet du capital. Plus c'est bas, mieux c'est.",
+    "top_symbols": "Cryptos les plus rentables",
+    "worst_symbols": "Pires performances",
+    "open_positions": "Positions ouvertes",
+    "disclaimer": "🛈 Les stats incluent à la fois paper et live trading. Les performances passées ne garantissent pas les futures."
   }
 }

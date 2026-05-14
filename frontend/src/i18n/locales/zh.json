@@ -212,7 +212,8 @@
     "errors": {
       "toggle_failed": "无法修改机器人",
       "enable_live_failed": "无法启用实盘模式"
-    }
+    },
+    "see_full_analytics": "查看完整盈亏分析"
   },
   "profile": {
     "title": "个人中心",
@@ -437,5 +438,31 @@
     },
     "disclaimer": "🛈 过往表现不代表未来结果。模拟中不包含交易费用。",
     "error": "回测失败"
+  },
+  "pnl": {
+    "title": "盈亏看板",
+    "current_capital": "当前资本",
+    "realized": "已实现",
+    "unrealized": "未实现",
+    "equity_curve": "资本演变",
+    "trades": "笔交易",
+    "from": "从",
+    "to": "至",
+    "win_rate_breakdown": "盈亏分布",
+    "wins": "盈利",
+    "losses": "亏损",
+    "breakeven": "持平",
+    "avg_win": "平均盈利",
+    "avg_loss": "平均亏损",
+    "profit_factor": "盈利因子",
+    "avg_duration": "平均时长",
+    "best_trade": "最佳",
+    "worst_trade": "最差",
+    "max_drawdown": "最大回撤",
+    "max_drawdown_desc": "资本从峰值的最大跌幅。",
+    "top_symbols": "最赚钱的加密货币",
+    "worst_symbols": "最差表现",
+    "open_positions": "持仓",
+    "disclaimer": "🛈 统计数据包含模拟和实盘交易。"
   }
 }

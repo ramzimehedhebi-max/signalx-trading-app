@@ -212,7 +212,8 @@
     "errors": {
       "toggle_failed": "Não foi possível modificar o bot",
       "enable_live_failed": "Não foi possível ativar o modo Ao Vivo"
-    }
+    },
+    "see_full_analytics": "Ver análise P&L completa"
   },
   "profile": {
     "title": "Perfil",
@@ -437,5 +438,31 @@
     },
     "disclaimer": "🛈 Desempenho passado não garante resultados futuros. Taxas de negociação não estão incluídas na simulação.",
     "error": "Falha no backtest"
+  },
+  "pnl": {
+    "title": "Painel P&L",
+    "current_capital": "CAPITAL ATUAL",
+    "realized": "REALIZADO",
+    "unrealized": "NÃO REALIZADO",
+    "equity_curve": "Evolução do capital",
+    "trades": "trades",
+    "from": "De",
+    "to": "Até",
+    "win_rate_breakdown": "Distribuição ganhos/perdas",
+    "wins": "Vitórias",
+    "losses": "Perdas",
+    "breakeven": "Empate",
+    "avg_win": "GANHO MÉDIO",
+    "avg_loss": "PERDA MÉDIA",
+    "profit_factor": "PROFIT FACTOR",
+    "avg_duration": "DURAÇÃO MÉDIA",
+    "best_trade": "MELHOR",
+    "worst_trade": "PIOR",
+    "max_drawdown": "Drawdown máximo",
+    "max_drawdown_desc": "Maior queda desde um pico do capital.",
+    "top_symbols": "Criptos mais rentáveis",
+    "worst_symbols": "Piores performances",
+    "open_positions": "Posições abertas",
+    "disclaimer": "🛈 As estatísticas incluem paper e live trading."
   }
 }

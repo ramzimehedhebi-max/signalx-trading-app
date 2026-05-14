@@ -212,7 +212,8 @@
     "errors": {
       "toggle_failed": "Bot konnte nicht geändert werden",
       "enable_live_failed": "Live-Modus konnte nicht aktiviert werden"
-    }
+    },
+    "see_full_analytics": "Vollständige P&L-Analyse"
   },
   "profile": {
     "title": "Profil",
@@ -437,5 +438,31 @@
     },
     "disclaimer": "🛈 Vergangene Performance garantiert keine zukünftigen Ergebnisse. Handelsgebühren sind nicht in der Simulation enthalten.",
     "error": "Backtest fehlgeschlagen"
+  },
+  "pnl": {
+    "title": "P&L Dashboard",
+    "current_capital": "AKTUELLES KAPITAL",
+    "realized": "REALISIERT",
+    "unrealized": "UNREALISIERT",
+    "equity_curve": "Kapitalentwicklung",
+    "trades": "Trades",
+    "from": "Von",
+    "to": "Jetzt",
+    "win_rate_breakdown": "Gewinn-/Verlust-Aufteilung",
+    "wins": "Gewinne",
+    "losses": "Verluste",
+    "breakeven": "Unentschieden",
+    "avg_win": "Ø GEWINN",
+    "avg_loss": "Ø VERLUST",
+    "profit_factor": "PROFIT FACTOR",
+    "avg_duration": "Ø DAUER",
+    "best_trade": "BESTER",
+    "worst_trade": "SCHLECHTESTER",
+    "max_drawdown": "Maximaler Drawdown",
+    "max_drawdown_desc": "Größter Rückgang von einem Höhepunkt.",
+    "top_symbols": "Profitabelste Kryptos",
+    "worst_symbols": "Schlechteste",
+    "open_positions": "Offene Positionen",
+    "disclaimer": "🛈 Statistik enthält Paper und Live Trades."
   }
 }

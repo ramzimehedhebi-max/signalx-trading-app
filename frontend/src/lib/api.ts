@@ -116,6 +116,7 @@ export const api = {
   botPositions: () => request<any[]>("/bot/positions"),
   botTrades: () => request<any[]>("/bot/trades"),
   botStats: () => request<any>("/bot/stats"),
+  botAnalytics: () => request<any>("/bot/analytics"),
   botReset: () => request<any>("/bot/reset", { method: "POST" }),
   botRunNow: () => request<any>("/bot/run-now", { method: "POST" }),
   botBacktest: (params: any) =>

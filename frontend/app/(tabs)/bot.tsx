@@ -264,6 +264,17 @@ export default function Bot() {
               </Text>
             </View>
           </View>
+
+          <TouchableOpacity
+            onPress={() => router.push("/pnl")}
+            style={styles.pnlCta}
+            testID="bot-open-pnl-btn"
+            activeOpacity={0.85}
+          >
+            <Ionicons name="stats-chart" size={16} color={theme.colors.primary} />
+            <Text style={styles.pnlCtaText}>{t("bot.see_full_analytics")}</Text>
+            <Ionicons name="chevron-forward" size={16} color={theme.colors.primary} />
+          </TouchableOpacity>
         </View>
 
         {/* Mode Paper / Live */}
@@ -744,6 +755,15 @@ const styles = StyleSheet.create({
   kpi: { flex: 1 },
   kpiL: { color: theme.colors.textMuted, fontSize: 10, fontWeight: "800", letterSpacing: 1 },
   kpiV: { color: "#fff", fontSize: 16, fontWeight: "800", marginTop: 4 },
+
+  pnlCta: {
+    marginTop: 16, paddingVertical: 12, paddingHorizontal: 14,
+    flexDirection: "row", alignItems: "center", gap: 8,
+    borderRadius: 14,
+    backgroundColor: theme.colors.primary + "15",
+    borderColor: theme.colors.primary + "40", borderWidth: 1,
+  },
+  pnlCtaText: { color: theme.colors.primary, fontSize: 13, fontWeight: "800", flex: 1 },
 
   stratCard: {
     marginTop: 14, padding: 14,

@@ -212,7 +212,8 @@
     "errors": {
       "toggle_failed": "تعذر تعديل البوت",
       "enable_live_failed": "تعذر تفعيل الوضع الحي"
-    }
+    },
+    "see_full_analytics": "عرض تحليلات الأرباح الكاملة"
   },
   "profile": {
     "title": "الملف الشخصي",
@@ -437,5 +438,31 @@
     },
     "disclaimer": "🛈 الأداء السابق لا يضمن النتائج المستقبلية. رسوم التداول غير مدرجة في المحاكاة.",
     "error": "فشل الاختبار الرجعي"
+  },
+  "pnl": {
+    "title": "لوحة الأرباح والخسائر",
+    "current_capital": "رأس المال الحالي",
+    "realized": "محقق",
+    "unrealized": "غير محقق",
+    "equity_curve": "تطور رأس المال",
+    "trades": "صفقات",
+    "from": "من",
+    "to": "إلى",
+    "win_rate_breakdown": "توزيع الأرباح/الخسائر",
+    "wins": "أرباح",
+    "losses": "خسائر",
+    "breakeven": "تعادل",
+    "avg_win": "متوسط الربح",
+    "avg_loss": "متوسط الخسارة",
+    "profit_factor": "PROFIT FACTOR",
+    "avg_duration": "متوسط المدة",
+    "best_trade": "الأفضل",
+    "worst_trade": "الأسوأ",
+    "max_drawdown": "أقصى تراجع",
+    "max_drawdown_desc": "أكبر انخفاض من قمة رأس المال.",
+    "top_symbols": "أفضل العملات أداءً",
+    "worst_symbols": "أسوأ العملات",
+    "open_positions": "المراكز المفتوحة",
+    "disclaimer": "🛈 الإحصائيات تشمل التداول الورقي والمباشر."
   }
 }

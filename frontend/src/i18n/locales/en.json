@@ -235,7 +235,8 @@
     "errors": {
       "toggle_failed": "Could not modify the bot",
       "enable_live_failed": "Could not enable Live mode"
-    }
+    },
+    "see_full_analytics": "View full P&L analytics"
   },
   "profile": {
     "title": "Profile",
@@ -430,5 +431,31 @@
     "it": "Italiano",
     "pt": "Português (BR)",
     "zh": "中文"
+  },
+  "pnl": {
+    "title": "P&L Dashboard",
+    "current_capital": "CURRENT CAPITAL",
+    "realized": "REALIZED",
+    "unrealized": "UNREALIZED",
+    "equity_curve": "Capital evolution",
+    "trades": "trades",
+    "from": "From",
+    "to": "Now",
+    "win_rate_breakdown": "Win rate breakdown",
+    "wins": "Wins",
+    "losses": "Losses",
+    "breakeven": "Breakeven",
+    "avg_win": "AVG WIN",
+    "avg_loss": "AVG LOSS",
+    "profit_factor": "PROFIT FACTOR",
+    "avg_duration": "AVG DURATION",
+    "best_trade": "BEST TRADE",
+    "worst_trade": "WORST TRADE",
+    "max_drawdown": "Max drawdown",
+    "max_drawdown_desc": "Biggest equity drop from a peak. Lower is better.",
+    "top_symbols": "Top profitable cryptos",
+    "worst_symbols": "Worst performers",
+    "open_positions": "Open positions",
+    "disclaimer": "🛈 Stats include both paper and live trades. Past performance does not guarantee future results."
   }
 }
