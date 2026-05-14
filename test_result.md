@@ -811,3 +811,41 @@ agent_communication:
         - First slide shows swipe hint at bottom
 
         No backend changes. No regression: existing /help page still functions, all sections preserved.
+    - agent: "main"
+      message: |
+        🌍 i18n + 🎁 AUTO-ONBOARDING — Two follow-ups to the interactive tutorial:
+
+        A. FULL i18n COVERAGE (8 languages)
+        Added the "tutorial" namespace (8 slides + UI labels + badges) to all 6 remaining locales:
+          - /app/frontend/src/i18n/locales/ar.json (Arabic, RTL-aware)
+          - /app/frontend/src/i18n/locales/de.json (German)
+          - /app/frontend/src/i18n/locales/es.json (Spanish)
+          - /app/frontend/src/i18n/locales/it.json (Italian)
+          - /app/frontend/src/i18n/locales/pt.json (Portuguese)
+          - /app/frontend/src/i18n/locales/zh.json (Chinese simplified)
+        All 8 JSON files validate (python json.load passed for each).
+        Users on Arabic / German / Spanish / Italian / Portuguese / Chinese phones now see the tutorial
+        in their native language. The TTS voice-over also adapts (i18n.language fed into Speech.speak).
+
+        B. AUTO-ONBOARDING ON FIRST LOGIN
+        Modified:
+          - /app/frontend/app/index.tsx — Now reads AsyncStorage key @signalx_tutorial_seen_v1 on mount.
+            If user is logged in AND tutorial has not been seen → redirects to /tutorial?onboarding=1
+            instead of /(tabs). New users discover the app immediately after signup/login.
+          - /app/frontend/app/tutorial.tsx — Now reads the "onboarding" query param via useLocalSearchParams().
+            When user finishes (or skips) the tutorial:
+              - if onboarding=1 → router.replace("/(tabs)")  (clean entry to main app)
+              - else → router.back() with fallback to /(tabs) if no back stack
+            Combined into a single `finishAndExit()` callback for consistency.
+
+        Flow:
+          New user signs up → token stored → AuthProvider sets user → /index renders → reads tutorial_seen
+          → false → Redirect to /tutorial?onboarding=1 → user navigates 8 slides → Done → flag saved →
+          router.replace("/(tabs)") → home tab visible. From now on, /index always redirects to /(tabs)
+          directly.
+
+        Replay available via: Profile → Help & Support → "Interactive Tutorial" card (existing CTA).
+
+        No backend changes. Backend still healthy (bot engine just executed TRAIL ACTIVATED + PARTIAL TP
+        on LINKUSDT at 15:44 — proves the advanced features are live).
+

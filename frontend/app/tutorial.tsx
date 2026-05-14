@@ -10,7 +10,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
-import { useRouter } from "expo-router";
+import { useRouter, useLocalSearchParams } from "expo-router";
 import { useTranslation } from "react-i18next";
 import { LinearGradient } from "expo-linear-gradient";
 import * as Speech from "expo-speech";
@@ -115,6 +115,8 @@ const STORAGE_KEY = "@signalx_tutorial_seen_v1";
 
 export default function TutorialScreen() {
   const router = useRouter();
+  const params = useLocalSearchParams<{ onboarding?: string }>();
+  const isOnboarding = params.onboarding === "1";
   const { t, i18n } = useTranslation();
   const [index, setIndex] = useState(0);
   const [voiceEnabled, setVoiceEnabled] = useState(false);
@@ -168,18 +170,30 @@ export default function TutorialScreen() {
     };
   }, [index, animateIn, speakCurrent]);
 
+  const finishAndExit = useCallback(async () => {
+    try {
+      await AsyncStorage.setItem(STORAGE_KEY, "1");
+    } catch {}
+    if (isOnboarding) {
+      router.replace("/(tabs)");
+    } else {
+      // try back, else fallback to (tabs) home
+      try {
+        router.back();
+      } catch {
+        router.replace("/(tabs)");
+      }
+    }
+  }, [isOnboarding, router]);
+
   const goNext = useCallback(async () => {
     Speech.stop();
     if (index < total - 1) {
       setIndex(index + 1);
     } else {
-      // mark seen and exit
-      try {
-        await AsyncStorage.setItem(STORAGE_KEY, "1");
-      } catch {}
-      router.back();
+      await finishAndExit();
     }
-  }, [index, router, total]);
+  }, [index, total, finishAndExit]);
 
   const goPrev = useCallback(() => {
     Speech.stop();
@@ -188,11 +202,8 @@ export default function TutorialScreen() {
 
   const skip = useCallback(async () => {
     Speech.stop();
-    try {
-      await AsyncStorage.setItem(STORAGE_KEY, "1");
-    } catch {}
-    router.back();
-  }, [router]);
+    await finishAndExit();
+  }, [finishAndExit]);
 
   const toggleVoice = useCallback(() => {
     setVoiceEnabled((v) => {

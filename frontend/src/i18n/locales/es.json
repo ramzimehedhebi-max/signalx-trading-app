@@ -631,5 +631,62 @@
       "b": "No, el trading de criptomonedas implica riesgo",
       "c": "Sí, pero solo con Premium"
     }
+  },
+  "tutorial": {
+    "launch_title": "🎬 Tutorial interactivo",
+    "launch_sub": "Recorrido guiado en 8 pasos — 3 minutos para entenderlo todo",
+    "launch_cta": "Iniciar tutorial",
+    "next": "Siguiente",
+    "prev": "Atrás",
+    "finish": "Terminar",
+    "swipe_hint": "Desliza para navegar",
+    "s1": {
+      "title": "Bienvenido a SignalX 🚀",
+      "text": "Vas a descubrir cómo un bot de IA puede operar por ti en Binance, 24/7, con total seguridad. Tres minutos y estarás listo."
+    },
+    "s2": {
+      "title": "La regla de oro: tu seguridad",
+      "text": "SignalX NUNCA guarda tu dinero. Tus fondos quedan al 100% en tu cuenta de Binance. Solo enviamos órdenes mediante claves API seguras.",
+      "badge1": "🔐 Tus fondos se quedan CONTIGO",
+      "badge2": "❌ Claves API sin permiso de retiro"
+    },
+    "s3": {
+      "title": "Paso 1 — Deposita en Binance",
+      "text": "Primero pon dinero en Binance. Tres opciones, de la más simple a la más barata:",
+      "badge1": "💳 Tarjeta bancaria — instantáneo, 2% comisión",
+      "badge2": "🏦 Transferencia SEPA — 1-2 días, GRATIS ⭐",
+      "badge3": "₿ Desde otra cartera cripto"
+    },
+    "s4": {
+      "title": "Paso 2 — Conecta Binance",
+      "text": "Crea claves API en Binance y pégalas en SignalX. CUIDADO con los permisos:",
+      "badge1": "✅ Solo Spot & Margin Trading",
+      "badge2": "❌ NUNCA Withdrawals ni Universal Transfer"
+    },
+    "s5": {
+      "title": "Paso 3 — Lanza el bot en modo Paper",
+      "text": "El bot opera en simulación con 1000 USDT virtuales — sin dinero real. Observa 1-2 semanas antes de pasar a real.",
+      "badge1": "🧪 Modo Paper = cero riesgo",
+      "badge2": "🤖 Stop-loss 3% • Take-profit 8-10%",
+      "badge3": "📊 Diversificación + Trailing TP activos"
+    },
+    "s6": {
+      "title": "Modo Live — Dinero real",
+      "text": "Cuando estés cómodo, pasa a Live. Tendrás que aprobar un quiz 5/5 para desbloquearlo. Límite por defecto: 50 $ por operación.",
+      "badge1": "⚠️ Quiz obligatorio antes de activar"
+    },
+    "s7": {
+      "title": "Retira tus ganancias cuando quieras",
+      "text": "SignalX no gestiona tus retiros — sigues siendo el propietario. Recupera tu dinero directamente en Binance:",
+      "badge1": "1️⃣ Binance → Spot Wallet",
+      "badge2": "2️⃣ Convertir USDT → EUR",
+      "badge3": "3️⃣ Retiro → Transferencia SEPA",
+      "badge4": "4️⃣ Recibido en 1-2 días, GRATIS"
+    },
+    "s8": {
+      "title": "¡Listo para operar! 🎯",
+      "text": "Resumen: Depósito → Conectar → Bot Paper → Quiz → Live. El trading implica riesgo, solo opera con lo que puedas perder.",
+      "badge1": "💡 Ayuda y Soporte siempre disponible en tu Perfil"
+    }
   }
 }
