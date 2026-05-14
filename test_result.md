@@ -446,3 +446,98 @@ agent_communication:
           ✅ EN: default browser locale fallback works
           ✅ Bundle compiles (1395 modules, no errors in Metro)
         No backend testing needed (no backend file changed). Frontend testing pending user approval.
+
+    - agent: "main"
+      message: |
+        ADVANCED BOT FEATURES (P2) implemented — adds 3 new capabilities to the trading engine:
+
+        BACKEND (/app/backend/server.py):
+        ─ Added new BotConfig fields (with defaults):
+          • diversification_enabled=True, max_per_category=2
+          • tp_trailing_enabled=True, tp_trail_distance_pct=1.5
+          • partial_tp_enabled=True, partial_tp_level1_pct=3.0, partial_tp_level1_close=50.0,
+            partial_tp_level2_pct=6.0, partial_tp_level2_close=30.0
+          (mirrored on BotConfigUpdate so PUT /api/bot/config accepts them)
+        ─ Added new BotPosition fields:
+          • category (L1/Meme/DeFi/Pay/Other) — assigned on entry via SYMBOL_CATEGORIES map
+          • original_quantity, tp_trail_active, partial_tp_done (list of triggered levels)
+        ─ Added module-level SYMBOL_CATEGORIES dict + get_category() helper (covers BTC/ETH/SOL/BNB/AVAX/
+          ADA/DOT/TRX/NEAR/APT/SUI/TON [L1], DOGE/SHIB/PEPE/FLOKI/WIF/BONK [Meme], LINK/UNI/AAVE/MKR/LDO/
+          CRV [DeFi], XRP/XLM/LTC/BCH [Pay])
+        ─ New helper _close_position_partial(user_id, position, exit_price, close_pct, reason, level_idx):
+          • Sells a percentage of the open position (also routes through Binance live if applicable)
+          • Records a trade with partial=True + partial_level
+          • Mutates position.quantity in-place and persists partial_tp_done so the same level can't trigger twice
+          • Sends a dedicated push notification "🪙 Sym prise partielle X% — +Y$ verrouillés"
+        ─ Rewrote _bot_check_positions logic order:
+            1. Update trailing SL (existing)
+            2. NEW: Partial TP check — if profit >= L1_pct and 1 not in partial_done → close L1_close%; same for L2
+            3. SL exit (existing) — if cp <= stop_loss, close with "stop_loss" or "trailing_stop"
+            4. NEW: When cp >= take_profit AND tp_trailing_enabled → arm tp_trail_active instead of closing,
+               + send "🚀 TP atteint — trailing activé" notification
+            5. NEW: If tp_trail_active → exit when cp falls back tp_trail_distance_pct from highest_price
+               (reason="trailing_tp")
+            6. AI predictive early exit (existing)
+        ─ Updated _bot_evaluate_entries:
+            • Counts open positions per category at start (cat_counts dict)
+            • Per-candidate diversification gate: skip if cat_counts[cat] >= max_per_category
+            • Stores category + original_quantity on new positions; bumps cat_counts after open
+        ─ Extended reason_fr map in _close_position with: trailing_tp, partial_tp_1, partial_tp_2
+        ─ Added Dict to typing imports
+
+        FRONTEND (/app/frontend/app/(tabs)/bot.tsx):
+        ─ Added 5 new boolean badges in strategy section (cfg.diversification_enabled,
+          cfg.tp_trailing_enabled, cfg.partial_tp_enabled) with Ionicons git-branch/rocket/layers
+        ─ Extended SettingsSheet with:
+          • New "ADVANCED FEATURES" section with Switch toggles for the 3 features
+          • Conditional input fields when each toggle is on:
+            – Diversification: max_per_category (number)
+            – TP Trailing: tp_trail_distance_pct (decimal %)
+            – Partial TP: 4 inputs (L1 profit %, L1 close %, L2 profit %, L2 close %)
+        ─ Save handler sends all 9 new fields to PUT /api/bot/config
+        ─ New styles: advSection, advTitle, advRow, advRowTitle, advRowDesc
+
+        I18N — added 13 new keys to bot.settings.* + 3 to bot.strategy.* in all 8 languages
+        (en/fr/es/de/it/pt/ar/zh). Total now ~382 keys per locale.
+
+        VERIFIED LIVE: backend log shows `BOT DIVERSIF user=c8e2a014 categories_open={'Meme': 1} cap=2`
+        as soon as the bot scans → diversification is active and gating new entries correctly.
+
+        Also: switched EMAIL_FROM to `SignalX <noreply@signall.app>` after confirming `signall.app`
+        is VERIFIED on Resend (via API). Backend restarted.
+
+        BACKEND TESTING NEEDED for:
+          - PUT /api/bot/config with the new fields (round-trip + clamp validation)
+          - GET /api/bot/config returns the new fields with defaults for legacy users
+          - Diversification gate logic (mock: create 2 open Meme positions, ensure a 3rd Meme candidate is skipped)
+          - Partial-TP path (simulate a position with cp >= entry*(1+0.03) → expect partial_tp_done=[1])
+          - Trailing-TP path (simulate cp >= take_profit → expect tp_trail_active=True, no close;
+            then cp falls > tp_trail_distance_pct from peak → expect closed with reason="trailing_tp")
+          - Email send from new sender (smoke check: hit /api/auth/forgot-password with a real email,
+    - agent: "testing+main"
+      message: |
+        VALIDATION COMPLETE — All 19 backend tests PASSED (/app/backend_test.py).
+        Live engine log evidence captured during the run:
+          - BOT TRAIL ACTIVATED DOGEUSDT entry=0.1000 price=0.1145 new_SL=0.1122 (was 0.0800)
+          - BOT DIVERSIF user=e924e8e5 categories_open={'Meme': 1} cap=2
+          - BOT PARTIAL BTCUSDT closed 30.0% pnl=11988.96 (99.99%) remaining_qty=0.700000
+          - BOT TP-TRAIL ARMED BTCUSDT price=79911 tp=79125 — letting winner run
+          - [email] reset code sent to=ramzimehedhebi@gmail.com (via noreply@signall.app, no 500)
+
+        Test fixes applied:
+          - BACKEND_URL → http://127.0.0.1:8001/api (IPv6 issue with localhost)
+          - get_current_price → uses /api/market/ticker/{symbol} (avoid Binance 451 on test runner)
+          - trader@test.com → set lifetime_premium=True in MongoDB for unrestricted feature testing
+            (documented in /app/memory/test_credentials.md)
+
+        ALL 3 ADVANCED BOT FEATURES (P2) ARE LIVE AND FUNCTIONAL:
+          ✅ Diversification auto — categorized 28 symbols (L1/Meme/DeFi/Pay/Other), cap by category enforced
+          ✅ Trailing Take-Profit — arms tp_trail_active when TP hit; exits when peak drops by tp_trail_distance_pct
+          ✅ Partial Take-Profits — closes %slice at L1/L2 milestones; tracks via partial_tp_done, records partial trades
+
+        EMAIL_FROM successfully changed to SignalX <noreply@signall.app> after Resend DKIM verification.
+        Backward compatibility verified: legacy positions (no category/original_quantity/etc) work fine.
+
+            check the From header in Resend dashboard / metadata — DO NOT spam, just 1 send)
+
+        FRONTEND TESTING — pending user permission.

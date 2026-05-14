@@ -163,7 +163,10 @@
       "desc": "يفحص البوت {{count}} زوجاً كل {{interval}} دقيقة. مؤشرات RSI + EMA تكتشف الفرص، Claude Sonnet 4.5 يتحقق من الصفقات غير المؤكدة. إيقاف الخسارة {{sl}}% · جني الأرباح {{tp}}% · {{pos}}% رأس المال/صفقة.",
       "trailing_sl": "إيقاف خسارة متحرك +{{pct}}%",
       "compounding": "المضاعفة",
-      "ai_predictive": "التنبؤ بالذكاء الاصطناعي"
+      "ai_predictive": "التنبؤ بالذكاء الاصطناعي",
+      "diversification": "تنويع",
+      "tp_trailing": "Trailing TP",
+      "partial_tp": "TP جزئي"
     },
     "scanning": "البوت يفحص السوق…",
     "activate_to_trade": "قم بتفعيل البوت لبدء التداول",
@@ -191,7 +194,20 @@
       "take_profit": "جني الأرباح %",
       "interval": "فترة التحليل (دقيقة)",
       "pairs": "الأزواج المراد تداولها",
-      "save": "حفظ"
+      "save": "حفظ",
+      "advanced_title": "ميزات متقدمة",
+      "diversification": "تنويع تلقائي",
+      "diversification_desc": "تحديد عدد المراكز المتزامنة لكل فئة أصول (L1, Meme, DeFi…)",
+      "max_per_category": "الحد الأقصى للمراكز لكل فئة",
+      "tp_trailing": "Trailing Take-Profit",
+      "tp_trailing_desc": "اترك الرابحين يتحركون: عند الوصول إلى TP، انتقل إلى trailing TP بدلاً من الإغلاق.",
+      "tp_trail_distance": "مسافة Trailing TP ٪",
+      "partial_tp": "جني أرباح جزئي (Scaling out)",
+      "partial_tp_desc": "أغلق جزءاً من المركز عند مستويات ربح وسيطة.",
+      "partial_l1_pct": "ربح ن1 ٪",
+      "partial_l1_close": "إغلاق ن1 ٪",
+      "partial_l2_pct": "ربح ن2 ٪",
+      "partial_l2_close": "إغلاق ن2 ٪"
     },
     "errors": {
       "toggle_failed": "تعذر تعديل البوت",

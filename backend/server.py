@@ -7,7 +7,7 @@ import os
 import logging
 from pathlib import Path
 from pydantic import BaseModel, Field, EmailStr
-from typing import List, Optional
+from typing import List, Optional, Dict
 import uuid
 from datetime import datetime, timezone, timedelta
 import bcrypt
@@ -1250,6 +1250,20 @@ class BotConfig(BaseModel):
     compounding_enabled: bool = True  # capital grows with realized profits
     ai_predictions_enabled: bool = True  # use AI predictions for entries + exits
     ai_exit_confidence: int = 65  # min confidence for AI to trigger an early exit
+    # ----- NEW: ADVANCED FEATURES -----
+    # Diversification: limit simultaneous positions per asset category
+    diversification_enabled: bool = True
+    max_per_category: int = 2  # max open positions per category (L1, Meme, DeFi, …)
+    # Trailing Take-Profit: when price hits fixed TP, switch to trailing-TP mode
+    # so we let the winner run; exit when price falls back tp_trail_distance_pct
+    tp_trailing_enabled: bool = True
+    tp_trail_distance_pct: float = 1.5  # close when price drops X% from highest after TP hit
+    # Partial Take-Profits (scaling out): close a slice at predefined profit milestones
+    partial_tp_enabled: bool = True
+    partial_tp_level1_pct: float = 3.0   # at +3% profit
+    partial_tp_level1_close: float = 50.0  # close 50% of position
+    partial_tp_level2_pct: float = 6.0   # at +6% profit
+    partial_tp_level2_close: float = 30.0  # close 30% of position
     # ----- LIVE TRADING -----
     live_mode: bool = False  # false = paper trading, true = real Binance orders
     live_max_position_usdt: float = 50.0  # SAFETY cap: max USDT per single order in live mode
@@ -1275,6 +1289,16 @@ class BotConfigUpdate(BaseModel):
     compounding_enabled: Optional[bool] = None
     ai_predictions_enabled: Optional[bool] = None
     ai_exit_confidence: Optional[int] = None
+    # NEW
+    diversification_enabled: Optional[bool] = None
+    max_per_category: Optional[int] = None
+    tp_trailing_enabled: Optional[bool] = None
+    tp_trail_distance_pct: Optional[float] = None
+    partial_tp_enabled: Optional[bool] = None
+    partial_tp_level1_pct: Optional[float] = None
+    partial_tp_level1_close: Optional[float] = None
+    partial_tp_level2_pct: Optional[float] = None
+    partial_tp_level2_close: Optional[float] = None
     live_mode: Optional[bool] = None
     live_max_position_usdt: Optional[float] = None
     live_killswitch: Optional[bool] = None
@@ -1297,6 +1321,11 @@ class BotPosition(BaseModel):
     ai_target_median: Optional[float] = None  # AI-predicted target if available
     last_ai_check: Optional[datetime] = None  # last prediction sanity-check
     status: str = "open"  # open / closed
+    # ----- NEW: ADVANCED FEATURES -----
+    category: str = "Other"  # asset category for diversification (L1 / Meme / DeFi / Other)
+    original_quantity: float = 0.0  # tracked to compute partial-close ratios
+    tp_trail_active: bool = False  # after fixed TP was reached, switch to trailing TP
+    partial_tp_done: List[int] = Field(default_factory=list)  # indices of partial levels triggered
 
 
 class BotTrade(BaseModel):
@@ -1853,7 +1882,10 @@ async def _close_position(user_id: str, position: dict, exit_price: float, reaso
         "take_profit": "Take-Profit atteint",
         "stop_loss": "Stop-Loss déclenché",
         "trailing_stop": "Trailing SL — gain verrouillé",
+        "trailing_tp": "Trailing TP — sommet sécurisé",
         "ai_exit_baisse": "Sortie IA — baisse anticipée",
+        "partial_tp_1": "Prise partielle (niveau 1)",
+        "partial_tp_2": "Prise partielle (niveau 2)",
     }.get(reason, reason)
     title = f"{icon} {sym} fermé : {pnl:+.2f} $"
     body = f"{reason_fr} · PnL {pnl_pct:+.2f}% · Sortie à ${exit_price:.4f}"
@@ -1868,6 +1900,118 @@ async def _close_position(user_id: str, position: dict, exit_price: float, reaso
 
 def symbolToBase_py(sym: str) -> str:
     return sym.replace("USDT", "").replace("BUSD", "").replace("USD", "")
+
+
+# ----- ASSET CATEGORIES (for diversification feature) -----
+SYMBOL_CATEGORIES = {
+    # Layer 1 / Smart contract platforms
+    "BTCUSDT": "L1", "ETHUSDT": "L1", "SOLUSDT": "L1", "BNBUSDT": "L1",
+    "AVAXUSDT": "L1", "ADAUSDT": "L1", "DOTUSDT": "L1", "TRXUSDT": "L1",
+    "NEARUSDT": "L1", "APTUSDT": "L1", "SUIUSDT": "L1", "TONUSDT": "L1",
+    # Meme coins
+    "DOGEUSDT": "Meme", "SHIBUSDT": "Meme", "PEPEUSDT": "Meme",
+    "FLOKIUSDT": "Meme", "WIFUSDT": "Meme", "BONKUSDT": "Meme",
+    # DeFi blue-chips
+    "LINKUSDT": "DeFi", "UNIUSDT": "DeFi", "AAVEUSDT": "DeFi",
+    "MKRUSDT": "DeFi", "LDOUSDT": "DeFi", "CRVUSDT": "DeFi",
+    # XRP-like payments
+    "XRPUSDT": "Pay", "XLMUSDT": "Pay", "LTCUSDT": "Pay", "BCHUSDT": "Pay",
+}
+
+
+def get_category(symbol: str) -> str:
+    return SYMBOL_CATEGORIES.get(symbol, "Other")
+
+
+async def _close_position_partial(user_id: str, position: dict, exit_price: float,
+                                  close_pct: float, reason: str, level_idx: int):
+    """Close a percentage of an open position (scaling out).
+    The remaining quantity stays in the position; partial_tp_done tracks which
+    levels have already been triggered to prevent re-triggering.
+    """
+    if close_pct <= 0 or close_pct >= 100:
+        # Use the full-close path for 100%
+        return await _close_position(user_id, position, exit_price, reason)
+    cfg = await db.bot_configs.find_one({"user_id": user_id}, {"_id": 0}) or {}
+    qty_to_close = position["quantity"] * (close_pct / 100.0)
+    remaining_qty = position["quantity"] - qty_to_close
+    exit_val = qty_to_close * exit_price
+    cost_basis = qty_to_close * position["entry_price"]
+    pnl = exit_val - cost_basis
+    pnl_pct = (exit_price - position["entry_price"]) / position["entry_price"] * 100
+
+    is_live = bool(position.get("live"))
+    live_order_id = None
+    if is_live:
+        try:
+            bcli = await _get_user_binance(user_id)
+            if bcli:
+                step = float(position.get("lot_step") or 0)
+                sell_qty = round_step(qty_to_close, step) if step > 0 else qty_to_close
+                if sell_qty > 0:
+                    order = await bcli.market_sell_quantity(position["symbol"], sell_qty)
+                    ex = extract_executed(order)
+                    if ex["avg_price"] > 0:
+                        exit_price = ex["avg_price"]
+                        exit_val = sell_qty * exit_price
+                        pnl = exit_val - (sell_qty * position["entry_price"])
+                        pnl_pct = (exit_price - position["entry_price"]) / position["entry_price"] * 100
+                    live_order_id = order.get("orderId")
+        except Exception as e:
+            logger.exception(f"BOT LIVE partial SELL failed {position['symbol']}: {e}")
+
+    # Record a trade entry for this partial slice
+    trade = BotTrade(
+        user_id=user_id,
+        symbol=position["symbol"],
+        side=position["side"],
+        quantity=qty_to_close,
+        entry_price=position["entry_price"],
+        exit_price=exit_price,
+        entry_time=position["entry_time"],
+        pnl=pnl,
+        pnl_pct=pnl_pct,
+        exit_reason=reason,
+    )
+    td = trade.dict()
+    td["live"] = is_live
+    if live_order_id:
+        td["live_order_id"] = live_order_id
+    td["partial"] = True
+    td["partial_level"] = level_idx
+    await db.bot_trades.insert_one(td)
+
+    # Update the open position with reduced qty + flag this level done
+    partial_done = list(position.get("partial_tp_done", []))
+    if level_idx not in partial_done:
+        partial_done.append(level_idx)
+    await db.bot_positions.update_one(
+        {"id": position["id"]},
+        {"$set": {"quantity": remaining_qty, "partial_tp_done": partial_done}},
+    )
+    # Refund USDT (paper book-keeping always)
+    update = {"$inc": {"paper_balance_usdt": exit_val}}
+    if cfg.get("compounding_enabled", True):
+        update["$inc"]["capital_usdt"] = pnl
+    await db.bot_configs.update_one({"user_id": user_id}, update)
+
+    live_tag = " [LIVE]" if is_live else ""
+    logger.info(
+        f"BOT PARTIAL{live_tag} {position['symbol']} closed {close_pct}% "
+        f"pnl={pnl:.2f} ({pnl_pct:.2f}%) remaining_qty={remaining_qty:.6f}"
+    )
+
+    sym = symbolToBase_py(position["symbol"])
+    await _create_notification(
+        user_id, "trade_close",
+        f"🪙 {sym} prise partielle {close_pct:.0f}%",
+        f"+{pnl:.2f} $ verrouillés ({pnl_pct:+.2f}%) · Reste {100 - close_pct:.0f}% en cours",
+        {"symbol": position["symbol"], "pnl": pnl, "pnl_pct": pnl_pct,
+         "reason": reason, "partial": True, "close_pct": close_pct},
+    )
+    # Mutate the in-memory position so subsequent checks in this cycle see the new qty
+    position["quantity"] = remaining_qty
+    position["partial_tp_done"] = partial_done
 
 
 async def _bot_check_positions(user_id: str):
@@ -1927,15 +2071,68 @@ async def _bot_check_positions(user_id: str):
             if update_fields:
                 await db.bot_positions.update_one({"id": p["id"]}, {"$set": update_fields})
                 p["stop_loss"] = update_fields.get("stop_loss", p["stop_loss"])
+                p["highest_price"] = update_fields.get("highest_price", p.get("highest_price"))
+                p["trail_active"] = update_fields.get("trail_active", p.get("trail_active"))
 
-        # Check exit
+        # ----- PARTIAL TAKE-PROFITS (scaling out) -----
+        if cfg.get("partial_tp_enabled", True):
+            profit_pct = (cp - p["entry_price"]) / p["entry_price"] * 100
+            partial_done = p.get("partial_tp_done", []) or []
+            # Level 1: e.g. close 50% at +3%
+            l1_pct = cfg.get("partial_tp_level1_pct", 3.0)
+            l1_close = cfg.get("partial_tp_level1_close", 50.0)
+            if 1 not in partial_done and profit_pct >= l1_pct and l1_close > 0:
+                await _close_position_partial(user_id, p, cp, l1_close, "partial_tp_1", 1)
+                continue  # re-evaluate next cycle with reduced qty
+            # Level 2: e.g. close 30% at +6%
+            l2_pct = cfg.get("partial_tp_level2_pct", 6.0)
+            l2_close = cfg.get("partial_tp_level2_close", 30.0)
+            if 2 not in partial_done and profit_pct >= l2_pct and l2_close > 0:
+                await _close_position_partial(user_id, p, cp, l2_close, "partial_tp_2", 2)
+                continue
+
+        # ----- EXIT CHECKS -----
+        # SL first (always)
         if cp <= p["stop_loss"]:
             reason = "trailing_stop" if p.get("trail_active") else "stop_loss"
             await _close_position(user_id, p, cp, reason)
             continue
-        elif cp >= p["take_profit"]:
-            await _close_position(user_id, p, cp, "take_profit")
-            continue
+
+        # TP — with trailing-TP option
+        if cp >= p["take_profit"]:
+            tp_trailing = cfg.get("tp_trailing_enabled", True)
+            if not tp_trailing:
+                await _close_position(user_id, p, cp, "take_profit")
+                continue
+            # Trailing TP active: don't close, instead arm tp_trail_active
+            if not p.get("tp_trail_active"):
+                await db.bot_positions.update_one(
+                    {"id": p["id"]}, {"$set": {"tp_trail_active": True}}
+                )
+                p["tp_trail_active"] = True
+                logger.info(
+                    f"BOT TP-TRAIL ARMED {p['symbol']} price={cp:.4f} tp={p['take_profit']:.4f} "
+                    f"— letting winner run"
+                )
+                await _create_notification(
+                    user_id, "trade_open",
+                    f"🚀 {symbolToBase_py(p['symbol'])} TP atteint — trailing activé",
+                    f"Prix ${cp:.4f} dépasse TP ${p['take_profit']:.4f}. On laisse courir.",
+                    {"symbol": p["symbol"], "tp": p["take_profit"], "price": cp},
+                )
+
+        # If trailing-TP is armed: exit when price falls back from peak
+        if p.get("tp_trail_active"):
+            highest = p.get("highest_price") or cp
+            tp_trail_dist = cfg.get("tp_trail_distance_pct", 1.5)
+            tp_trail_exit = highest * (1 - tp_trail_dist / 100)
+            if cp <= tp_trail_exit:
+                logger.info(
+                    f"BOT TP-TRAIL EXIT {p['symbol']} cp={cp:.4f} "
+                    f"highest={highest:.4f} tp_trail_exit={tp_trail_exit:.4f}"
+                )
+                await _close_position(user_id, p, cp, "trailing_tp")
+                continue
 
         # AI-driven early exit: check prediction every 30 min per position
         if cfg.get("ai_predictions_enabled", True):
@@ -1976,6 +2173,19 @@ async def _bot_evaluate_entries(user_id: str, cfg: dict):
         return
     open_syms = {p["symbol"] for p in open_pos}
     pairs = [s for s in cfg.get("pairs", DEFAULT_BOT_PAIRS) if s not in open_syms]
+
+    # ---- DIVERSIFICATION: count open positions per category ----
+    diversif_on = cfg.get("diversification_enabled", True)
+    cat_cap = int(cfg.get("max_per_category", 2))
+    cat_counts: Dict[str, int] = {}
+    if diversif_on:
+        for p in open_pos:
+            cat = p.get("category") or get_category(p["symbol"])
+            cat_counts[cat] = cat_counts.get(cat, 0) + 1
+        if cat_counts:
+            logger.info(
+                f"BOT DIVERSIF user={user_id[:8]} categories_open={cat_counts} cap={cat_cap}"
+            )
 
     cfg_now = await db.bot_configs.find_one({"user_id": user_id}, {"_id": 0})
     balance = cfg_now.get("paper_balance_usdt", cfg["capital_usdt"])
@@ -2019,6 +2229,15 @@ async def _bot_evaluate_entries(user_id: str, cfg: dict):
     )
 
     for c in candidates[:available_slots]:
+        # ---- DIVERSIFICATION GATE: skip if category cap reached ----
+        if diversif_on:
+            ccat = get_category(c["symbol"])
+            if cat_counts.get(ccat, 0) >= cat_cap:
+                logger.info(
+                    f"BOT DIVERSIF SKIP {c['symbol']} cat={ccat} "
+                    f"already_open={cat_counts.get(ccat, 0)} cap={cat_cap}"
+                )
+                continue
         # build indicators dict for Claude
         indicators = {
             "lastPrice": c["last_price"],
@@ -2145,6 +2364,8 @@ async def _bot_evaluate_entries(user_id: str, cfg: dict):
             highest_price=entry,
             ai_target_median=ai_target,
             entry_reason=f"{c['signal']['reason']} | IA: {validation_reason}{ai_reason_extra} | TP {tp_source}".strip(" |"),
+            category=get_category(c["symbol"]),
+            original_quantity=qty,
         )
         pos_dict = pos.dict()
         pos_dict["live"] = is_live
@@ -2154,6 +2375,10 @@ async def _bot_evaluate_entries(user_id: str, cfg: dict):
             {"user_id": user_id},
             {"$inc": {"paper_balance_usdt": -trade_size}},
         )
+        # Track category for the rest of this evaluation cycle (diversification)
+        if diversif_on:
+            ccat = get_category(c["symbol"])
+            cat_counts[ccat] = cat_counts.get(ccat, 0) + 1
         live_tag = " [LIVE]" if is_live else ""
         logger.info(f"BOT OPEN{live_tag} {c['symbol']} @ {entry} qty={qty:.6f} SL={sl:.4f} TP={tp:.4f} ({tp_source}) strength={c['signal']['strength']}")
 

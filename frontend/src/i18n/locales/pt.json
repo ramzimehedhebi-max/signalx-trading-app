@@ -163,7 +163,10 @@
       "desc": "O bot escaneia {{count}} pares a cada {{interval}} min. Indicadores RSI + EMA detectam oportunidades, Claude Sonnet 4.5 valida operações incertas. Stop-loss {{sl}}% · Take-profit {{tp}}% · {{pos}}% capital/operação.",
       "trailing_sl": "SL móvel +{{pct}}%",
       "compounding": "Capitalização",
-      "ai_predictive": "IA Preditiva"
+      "ai_predictive": "IA Preditiva",
+      "diversification": "Diversificação",
+      "tp_trailing": "Trailing TP",
+      "partial_tp": "TP parcial"
     },
     "scanning": "O bot está escaneando o mercado…",
     "activate_to_trade": "Ative o bot para começar a negociar",
@@ -191,7 +194,20 @@
       "take_profit": "TAKE-PROFIT %",
       "interval": "INTERVALO DE ANÁLISE (MIN)",
       "pairs": "PARES PARA NEGOCIAR",
-      "save": "Salvar"
+      "save": "Salvar",
+      "advanced_title": "RECURSOS AVANÇADOS",
+      "diversification": "Diversificação automática",
+      "diversification_desc": "Limita posições simultâneas por categoria de ativo (L1, Meme, DeFi…)",
+      "max_per_category": "MAX POSIÇÕES POR CATEGORIA",
+      "tp_trailing": "Trailing Take-Profit",
+      "tp_trailing_desc": "Deixe os ganhadores correrem: ao atingir TP, alterna para trailing TP em vez de fechar.",
+      "tp_trail_distance": "DISTÂNCIA TRAILING TP %",
+      "partial_tp": "Realização parcial (scaling out)",
+      "partial_tp_desc": "Fecha uma parte da posição em marcos de lucro intermediários.",
+      "partial_l1_pct": "LUCRO N1 %",
+      "partial_l1_close": "FECHAR N1 %",
+      "partial_l2_pct": "LUCRO N2 %",
+      "partial_l2_close": "FECHAR N2 %"
     },
     "errors": {
       "toggle_failed": "Não foi possível modificar o bot",

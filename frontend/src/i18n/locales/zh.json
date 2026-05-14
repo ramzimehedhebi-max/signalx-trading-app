@@ -163,7 +163,10 @@
       "desc": "机器人每{{interval}}分钟扫描{{count}}个交易对。RSI + EMA指标检测机会,Claude Sonnet 4.5验证不确定交易。止损{{sl}}% · 止盈{{tp}}% · 每笔交易{{pos}}%资金。",
       "trailing_sl": "移动止损 +{{pct}}%",
       "compounding": "复利",
-      "ai_predictive": "AI预测"
+      "ai_predictive": "AI预测",
+      "diversification": "分散",
+      "tp_trailing": "追踪TP",
+      "partial_tp": "部分TP"
     },
     "scanning": "机器人正在扫描市场…",
     "activate_to_trade": "激活机器人开始交易",
@@ -191,7 +194,20 @@
       "take_profit": "止盈 %",
       "interval": "分析间隔(分钟)",
       "pairs": "交易对",
-      "save": "保存"
+      "save": "保存",
+      "advanced_title": "高级功能",
+      "diversification": "自动分散",
+      "diversification_desc": "按资产类别（L1、Meme、DeFi…）限制同时持仓数量",
+      "max_per_category": "每类别最大持仓",
+      "tp_trailing": "追踪止盈",
+      "tp_trailing_desc": "让赢家奔跑：触及止盈时切换到追踪止盈，而非立即平仓。",
+      "tp_trail_distance": "追踪止盈距离 %",
+      "partial_tp": "部分止盈（分批出场）",
+      "partial_tp_desc": "在中间利润里程碑分批平仓。",
+      "partial_l1_pct": "利润 L1 %",
+      "partial_l1_close": "平仓 L1 %",
+      "partial_l2_pct": "利润 L2 %",
+      "partial_l2_close": "平仓 L2 %"
     },
     "errors": {
       "toggle_failed": "无法修改机器人",

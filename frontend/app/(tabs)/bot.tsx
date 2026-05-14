@@ -341,6 +341,24 @@ export default function Bot() {
                 <Text style={styles.boostText}>{t("bot.strategy.ai_predictive")}</Text>
               </View>
             )}
+            {cfg.diversification_enabled && (
+              <View style={styles.boost}>
+                <Ionicons name="git-branch" size={11} color={theme.colors.buy} />
+                <Text style={styles.boostText}>{t("bot.strategy.diversification")}</Text>
+              </View>
+            )}
+            {cfg.tp_trailing_enabled && (
+              <View style={styles.boost}>
+                <Ionicons name="rocket" size={11} color={theme.colors.buy} />
+                <Text style={styles.boostText}>{t("bot.strategy.tp_trailing")}</Text>
+              </View>
+            )}
+            {cfg.partial_tp_enabled && (
+              <View style={styles.boost}>
+                <Ionicons name="layers" size={11} color={theme.colors.buy} />
+                <Text style={styles.boostText}>{t("bot.strategy.partial_tp")}</Text>
+              </View>
+            )}
           </View>
         </View>
 
@@ -464,6 +482,16 @@ function SettingsSheet({ open, onClose, cfg, onUpdated }: any) {
   const [tp, setTp] = useState(String(cfg.take_profit_pct));
   const [interval, setIntervalV] = useState(String(cfg.interval_minutes));
   const [pairs, setPairs] = useState<string[]>(cfg.pairs || []);
+  // NEW: advanced features
+  const [diversifOn, setDiversifOn] = useState<boolean>(cfg.diversification_enabled ?? true);
+  const [maxPerCat, setMaxPerCat] = useState(String(cfg.max_per_category ?? 2));
+  const [tpTrailOn, setTpTrailOn] = useState<boolean>(cfg.tp_trailing_enabled ?? true);
+  const [tpTrailDist, setTpTrailDist] = useState(String(cfg.tp_trail_distance_pct ?? 1.5));
+  const [partialOn, setPartialOn] = useState<boolean>(cfg.partial_tp_enabled ?? true);
+  const [p1Pct, setP1Pct] = useState(String(cfg.partial_tp_level1_pct ?? 3));
+  const [p1Close, setP1Close] = useState(String(cfg.partial_tp_level1_close ?? 50));
+  const [p2Pct, setP2Pct] = useState(String(cfg.partial_tp_level2_pct ?? 6));
+  const [p2Close, setP2Close] = useState(String(cfg.partial_tp_level2_close ?? 30));
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -475,6 +503,15 @@ function SettingsSheet({ open, onClose, cfg, onUpdated }: any) {
       setTp(String(cfg.take_profit_pct));
       setIntervalV(String(cfg.interval_minutes));
       setPairs(cfg.pairs || []);
+      setDiversifOn(cfg.diversification_enabled ?? true);
+      setMaxPerCat(String(cfg.max_per_category ?? 2));
+      setTpTrailOn(cfg.tp_trailing_enabled ?? true);
+      setTpTrailDist(String(cfg.tp_trail_distance_pct ?? 1.5));
+      setPartialOn(cfg.partial_tp_enabled ?? true);
+      setP1Pct(String(cfg.partial_tp_level1_pct ?? 3));
+      setP1Close(String(cfg.partial_tp_level1_close ?? 50));
+      setP2Pct(String(cfg.partial_tp_level2_pct ?? 6));
+      setP2Close(String(cfg.partial_tp_level2_close ?? 30));
     }
   }, [open, cfg]);
 
@@ -493,6 +530,15 @@ function SettingsSheet({ open, onClose, cfg, onUpdated }: any) {
         take_profit_pct: parseFloat(tp),
         interval_minutes: parseInt(interval, 10),
         pairs,
+        diversification_enabled: diversifOn,
+        max_per_category: parseInt(maxPerCat, 10) || 2,
+        tp_trailing_enabled: tpTrailOn,
+        tp_trail_distance_pct: parseFloat(tpTrailDist),
+        partial_tp_enabled: partialOn,
+        partial_tp_level1_pct: parseFloat(p1Pct),
+        partial_tp_level1_close: parseFloat(p1Close),
+        partial_tp_level2_pct: parseFloat(p2Pct),
+        partial_tp_level2_close: parseFloat(p2Close),
       });
       onUpdated(updated);
       onClose();
@@ -552,6 +598,101 @@ function SettingsSheet({ open, onClose, cfg, onUpdated }: any) {
                   <Text style={[styles.pairText, pairs.includes(p) && styles.pairTextActive]}>{symbolToBase(p)}</Text>
                 </TouchableOpacity>
               ))}
+            </View>
+
+            {/* ====== ADVANCED FEATURES SECTION ====== */}
+            <View style={styles.advSection}>
+              <Text style={styles.advTitle}>{t("bot.settings.advanced_title")}</Text>
+
+              {/* Diversification */}
+              <View style={styles.advRow}>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.advRowTitle}>{t("bot.settings.diversification")}</Text>
+                  <Text style={styles.advRowDesc}>{t("bot.settings.diversification_desc")}</Text>
+                </View>
+                <Switch
+                  value={diversifOn}
+                  onValueChange={setDiversifOn}
+                  trackColor={{ false: theme.colors.border, true: theme.colors.primary }}
+                  testID="bot-diversif-toggle"
+                />
+              </View>
+              {diversifOn && (
+                <View style={{ marginTop: 8 }}>
+                  <Text style={styles.lbl}>{t("bot.settings.max_per_category")}</Text>
+                  <TextInput
+                    value={maxPerCat}
+                    onChangeText={setMaxPerCat}
+                    keyboardType="number-pad"
+                    style={styles.input}
+                    testID="bot-maxpercat-input"
+                  />
+                </View>
+              )}
+
+              {/* Trailing Take-Profit */}
+              <View style={styles.advRow}>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.advRowTitle}>{t("bot.settings.tp_trailing")}</Text>
+                  <Text style={styles.advRowDesc}>{t("bot.settings.tp_trailing_desc")}</Text>
+                </View>
+                <Switch
+                  value={tpTrailOn}
+                  onValueChange={setTpTrailOn}
+                  trackColor={{ false: theme.colors.border, true: theme.colors.primary }}
+                  testID="bot-tptrail-toggle"
+                />
+              </View>
+              {tpTrailOn && (
+                <View style={{ marginTop: 8 }}>
+                  <Text style={styles.lbl}>{t("bot.settings.tp_trail_distance")}</Text>
+                  <TextInput
+                    value={tpTrailDist}
+                    onChangeText={setTpTrailDist}
+                    keyboardType="decimal-pad"
+                    style={styles.input}
+                    testID="bot-tptraildist-input"
+                  />
+                </View>
+              )}
+
+              {/* Partial Take-Profits */}
+              <View style={styles.advRow}>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.advRowTitle}>{t("bot.settings.partial_tp")}</Text>
+                  <Text style={styles.advRowDesc}>{t("bot.settings.partial_tp_desc")}</Text>
+                </View>
+                <Switch
+                  value={partialOn}
+                  onValueChange={setPartialOn}
+                  trackColor={{ false: theme.colors.border, true: theme.colors.primary }}
+                  testID="bot-partial-toggle"
+                />
+              </View>
+              {partialOn && (
+                <>
+                  <View style={styles.grid2}>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.lbl}>{t("bot.settings.partial_l1_pct")}</Text>
+                      <TextInput value={p1Pct} onChangeText={setP1Pct} keyboardType="decimal-pad" style={styles.input} testID="bot-p1pct-input" />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.lbl}>{t("bot.settings.partial_l1_close")}</Text>
+                      <TextInput value={p1Close} onChangeText={setP1Close} keyboardType="decimal-pad" style={styles.input} testID="bot-p1close-input" />
+                    </View>
+                  </View>
+                  <View style={styles.grid2}>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.lbl}>{t("bot.settings.partial_l2_pct")}</Text>
+                      <TextInput value={p2Pct} onChangeText={setP2Pct} keyboardType="decimal-pad" style={styles.input} testID="bot-p2pct-input" />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.lbl}>{t("bot.settings.partial_l2_close")}</Text>
+                      <TextInput value={p2Close} onChangeText={setP2Close} keyboardType="decimal-pad" style={styles.input} testID="bot-p2close-input" />
+                    </View>
+                  </View>
+                </>
+              )}
             </View>
 
             <TouchableOpacity onPress={save} disabled={saving} style={[styles.cta, saving && { opacity: 0.7 }]} testID="bot-save-btn">
@@ -742,6 +883,12 @@ const styles = StyleSheet.create({
   pairTextActive: { color: "#000" },
 
   cta: { marginTop: 22, backgroundColor: theme.colors.primary, paddingVertical: 16, borderRadius: 999, alignItems: "center" },
+
+  advSection: { marginTop: 24, paddingTop: 18, borderTopColor: theme.colors.border, borderTopWidth: 1 },
+  advTitle: { color: theme.colors.primary, fontSize: 12, fontWeight: "900", letterSpacing: 1.5, marginBottom: 12 },
+  advRow: { flexDirection: "row", alignItems: "center", paddingVertical: 10, gap: 12 },
+  advRowTitle: { color: "#fff", fontSize: 14, fontWeight: "700" },
+  advRowDesc: { color: theme.colors.textMuted, fontSize: 11, marginTop: 2, lineHeight: 15 },
   ctaText: { color: "#000", fontWeight: "900", fontSize: 15 },
 
   modeCard: {

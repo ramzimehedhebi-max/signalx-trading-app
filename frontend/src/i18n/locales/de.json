@@ -163,7 +163,10 @@
       "desc": "Der Bot scannt {{count}} Paare alle {{interval}} Min. RSI + EMA-Indikatoren erkennen Gelegenheiten, Claude Sonnet 4.5 validiert unsichere Trades. Stop-Loss {{sl}}% · Take-Profit {{tp}}% · {{pos}}% Kapital/Trade.",
       "trailing_sl": "Trailing SL +{{pct}}%",
       "compounding": "Zinseszins",
-      "ai_predictive": "KI-Prädiktiv"
+      "ai_predictive": "KI-Prädiktiv",
+      "diversification": "Diversifikation",
+      "tp_trailing": "Trailing TP",
+      "partial_tp": "Teil-TP"
     },
     "scanning": "Der Bot scannt den Markt…",
     "activate_to_trade": "Aktivieren Sie den Bot, um mit dem Trading zu beginnen",
@@ -191,7 +194,20 @@
       "take_profit": "TAKE-PROFIT %",
       "interval": "ANALYSE-INTERVALL (MIN)",
       "pairs": "HANDELSPAARE",
-      "save": "Speichern"
+      "save": "Speichern",
+      "advanced_title": "ERWEITERTE FUNKTIONEN",
+      "diversification": "Automatische Diversifikation",
+      "diversification_desc": "Begrenzt gleichzeitige Positionen pro Asset-Kategorie (L1, Meme, DeFi…)",
+      "max_per_category": "MAX POSITIONEN PRO KATEGORIE",
+      "tp_trailing": "Trailing Take-Profit",
+      "tp_trailing_desc": "Lass Gewinner laufen: bei TP-Erreichen auf Trailing-TP umschalten statt schließen.",
+      "tp_trail_distance": "TRAILING-TP-ABSTAND %",
+      "partial_tp": "Teilweise Gewinnmitnahmen",
+      "partial_tp_desc": "Schließe einen Teil der Position bei Zwischengewinn-Marken.",
+      "partial_l1_pct": "GEWINN N1 %",
+      "partial_l1_close": "SCHLIESSEN N1 %",
+      "partial_l2_pct": "GEWINN N2 %",
+      "partial_l2_close": "SCHLIESSEN N2 %"
     },
     "errors": {
       "toggle_failed": "Bot konnte nicht geändert werden",
