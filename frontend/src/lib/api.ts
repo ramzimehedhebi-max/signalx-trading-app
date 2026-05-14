@@ -117,6 +117,11 @@ export const api = {
   botTrades: () => request<any[]>("/bot/trades"),
   botStats: () => request<any>("/bot/stats"),
   botAnalytics: () => request<any>("/bot/analytics"),
+  botLiveHistory: () => request<any>("/bot/live-history"),
+  botTraderReadiness: () => request<any>("/bot/trader-readiness"),
+  quizSubmit: (body: { score: number; answers: string[]; passed: boolean; time_spent_sec?: number }) =>
+    request<any>("/quiz/submit", { method: "POST", body: JSON.stringify(body) }),
+  adminQuizStats: () => request<any>("/admin/quiz-stats"),
   botReset: () => request<any>("/bot/reset", { method: "POST" }),
   botRunNow: () => request<any>("/bot/run-now", { method: "POST" }),
   botBacktest: (params: any) =>

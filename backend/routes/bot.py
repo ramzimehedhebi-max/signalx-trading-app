@@ -4,6 +4,7 @@ from datetime import datetime, timezone, timedelta
 import json, httpx, asyncio, uuid, logging
 
 from core import db, get_current_user, BINANCE_BASE, EMERGENT_LLM_KEY
+from pydantic import BaseModel
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -19,7 +20,7 @@ async def bot_get_config(user=Depends(get_current_user)):
 
 @router.put("/bot/config")
 async def bot_update_config(req: BotConfigUpdate, user=Depends(get_current_user)):
-    await _get_or_create_bot_config(user["id"])
+    current_cfg = await _get_or_create_bot_config(user["id"])
     update = {k: v for k, v in req.dict().items() if v is not None}
     if not update:
         cfg = await db.bot_configs.find_one({"user_id": user["id"]}, {"_id": 0})
@@ -59,9 +60,212 @@ async def bot_update_config(req: BotConfigUpdate, user=Depends(get_current_user)
                 detail=f"Plan Free limité à {FREE_MAX_PAIRS} paires. Passe à Premium pour des paires illimitées.",
             )
 
+    # Track live_mode transitions: open a live_activation when ON, close when OFF
+    if "live_mode" in update:
+        was_live = bool(current_cfg.get("live_mode"))
+        will_live = bool(update["live_mode"])
+        if not was_live and will_live:
+            await db.live_activations.insert_one({
+                "id": str(uuid.uuid4()),
+                "user_id": user["id"],
+                "activated_at": datetime.now(timezone.utc),
+                "deactivated_at": None,
+                "capital_at_activation": float(current_cfg.get("paper_balance_usdt", current_cfg.get("capital_usdt", 0))),
+                "max_drawdown_pct_during": 0.0,
+                "total_pnl": 0.0,
+                "trade_count": 0,
+                "active": True,
+            })
+        elif was_live and not will_live:
+            # Close the latest open session
+            await db.live_activations.update_one(
+                {"user_id": user["id"], "active": True},
+                {"$set": {"deactivated_at": datetime.now(timezone.utc), "active": False}},
+            )
+
     await db.bot_configs.update_one({"user_id": user["id"]}, {"$set": update})
     cfg = await db.bot_configs.find_one({"user_id": user["id"]}, {"_id": 0})
     return cfg
+
+
+# ====================== LIVE-MODE ACTIVATIONS HISTORY ======================
+@router.get("/bot/live-history")
+async def bot_live_history(user=Depends(get_current_user)):
+    """Return all LIVE-mode activation sessions with stats per session."""
+    activations = await db.live_activations.find(
+        {"user_id": user["id"]}, {"_id": 0}
+    ).sort("activated_at", -1).to_list(100)
+    return {"sessions": activations, "count": len(activations)}
+
+
+# ====================== TRADER READINESS ======================
+@router.get("/bot/trader-readiness")
+async def bot_trader_readiness(user=Depends(get_current_user)):
+    """Compute the 'Trader Ready' certification for the current user.
+    Conditions (MVP: 14 days instead of 30):
+    - At least 14 days since bot was first enabled (any mode)
+    - Max drawdown < 20%
+    - At least 10 closed trades
+    - Win-rate >= 40%
+    """
+    cfg = await db.bot_configs.find_one({"user_id": user["id"]}, {"_id": 0}) or {}
+    trades = await db.bot_trades.find({"user_id": user["id"]}, {"_id": 0}).to_list(5000)
+
+    user_doc = await db.users.find_one({"id": user["id"]}, {"_id": 0})
+    earned_at = user_doc.get("trader_ready_earned_at") if user_doc else None
+
+    # Days since bot enabled — use the earliest of (bot config created_at, first trade)
+    first_activity = cfg.get("created_at")
+    if trades:
+        sorted_trades = sorted(trades, key=lambda t: t.get("entry_time") or datetime.now(timezone.utc))
+        et = sorted_trades[0].get("entry_time")
+        if et and (not first_activity or et < first_activity):
+            first_activity = et
+    days_active = 0.0
+    if first_activity:
+        if isinstance(first_activity, datetime):
+            fa = first_activity.replace(tzinfo=timezone.utc) if first_activity.tzinfo is None else first_activity
+            days_active = (datetime.now(timezone.utc) - fa).total_seconds() / 86400
+
+    # Max drawdown from equity curve
+    capital_start = float(cfg.get("capital_usdt", 1000.0))
+    sorted_trades = sorted(trades, key=lambda t: t.get("exit_time") or t.get("entry_time") or datetime.now(timezone.utc))
+    running = capital_start
+    peak = capital_start
+    max_dd_pct = 0.0
+    for t in sorted_trades:
+        running += t.get("pnl", 0)
+        if running > peak:
+            peak = running
+        if peak > 0:
+            dd = (peak - running) / peak * 100
+            if dd > max_dd_pct:
+                max_dd_pct = dd
+
+    wins = [t for t in trades if t.get("pnl", 0) > 0]
+    win_rate = (len(wins) / len(trades) * 100) if trades else 0.0
+
+    REQUIRED_DAYS = 14
+    REQUIRED_TRADES = 10
+    MAX_DD = 20.0
+    MIN_WINRATE = 40.0
+
+    cond_days = days_active >= REQUIRED_DAYS
+    cond_trades = len(trades) >= REQUIRED_TRADES
+    cond_dd = max_dd_pct <= MAX_DD
+    cond_winrate = win_rate >= MIN_WINRATE
+
+    is_ready = cond_days and cond_trades and cond_dd and cond_winrate
+
+    # Persist the badge unlock timestamp first time we cross the threshold
+    if is_ready and not earned_at:
+        earned_at = datetime.now(timezone.utc)
+        await db.users.update_one(
+            {"id": user["id"]},
+            {"$set": {"trader_ready_earned_at": earned_at}},
+        )
+
+    return {
+        "is_ready": is_ready,
+        "earned_at": earned_at,
+        "criteria": {
+            "days_required": REQUIRED_DAYS,
+            "days_active": round(days_active, 1),
+            "days_ok": cond_days,
+            "trades_required": REQUIRED_TRADES,
+            "trades_count": len(trades),
+            "trades_ok": cond_trades,
+            "max_drawdown_threshold": MAX_DD,
+            "max_drawdown_pct": round(max_dd_pct, 2),
+            "drawdown_ok": cond_dd,
+            "winrate_required": MIN_WINRATE,
+            "win_rate_pct": round(win_rate, 1),
+            "winrate_ok": cond_winrate,
+        },
+        "progress_pct": round(
+            (int(cond_days) + int(cond_trades) + int(cond_dd) + int(cond_winrate)) / 4 * 100, 0
+        ),
+    }
+
+
+# ====================== QUIZ SUBMIT + ADMIN STATS ======================
+class QuizSubmitReq(BaseModel):
+    score: int  # 0..5
+    answers: List[str]  # list of "a"/"b"/"c"
+    time_spent_sec: Optional[float] = None
+    passed: bool
+
+
+@router.post("/quiz/submit")
+async def quiz_submit(req: QuizSubmitReq, user=Depends(get_current_user)):
+    await db.quiz_attempts.insert_one({
+        "id": str(uuid.uuid4()),
+        "user_id": user["id"],
+        "score": req.score,
+        "answers": req.answers,
+        "passed": req.passed,
+        "time_spent_sec": req.time_spent_sec,
+        "attempted_at": datetime.now(timezone.utc),
+    })
+    return {"ok": True}
+
+
+@router.get("/admin/quiz-stats")
+async def admin_quiz_stats(user=Depends(get_current_user)):
+    """Admin-only quiz analytics — lifetime_premium users only."""
+    user_doc = await db.users.find_one({"id": user["id"]}, {"_id": 0})
+    if not user_doc or not user_doc.get("lifetime_premium"):
+        raise HTTPException(status_code=403, detail="Admin access required")
+
+    attempts = await db.quiz_attempts.find({}, {"_id": 0}).to_list(10000)
+    total = len(attempts)
+    if total == 0:
+        return {
+            "total_attempts": 0, "unique_users": 0, "pass_rate_pct": 0,
+            "avg_score": 0, "avg_time_sec": 0,
+            "score_distribution": {str(i): 0 for i in range(6)},
+            "question_failure_rate": {f"q{i}": 0 for i in range(1, 6)},
+            "first_try_pass_rate_pct": 0,
+        }
+    unique_users = len({a["user_id"] for a in attempts})
+    passed = [a for a in attempts if a.get("passed")]
+    avg_score = sum(a["score"] for a in attempts) / total
+    times = [a["time_spent_sec"] for a in attempts if a.get("time_spent_sec")]
+    avg_time = sum(times) / len(times) if times else 0
+
+    # Score distribution
+    score_dist = {str(i): 0 for i in range(6)}
+    for a in attempts:
+        score_dist[str(a.get("score", 0))] = score_dist.get(str(a.get("score", 0)), 0) + 1
+
+    # Per-question failure analysis (correct answers per q: b, c, a, b, b)
+    correct = ["b", "c", "a", "b", "b"]
+    q_fail = {f"q{i + 1}": 0 for i in range(5)}
+    for a in attempts:
+        for i, ans in enumerate(a.get("answers", [])):
+            if i < 5 and ans != correct[i]:
+                q_fail[f"q{i + 1}"] = q_fail.get(f"q{i + 1}", 0) + 1
+    q_fail_rate = {k: round(v / total * 100, 1) for k, v in q_fail.items()}
+
+    # First-try pass-rate: % users who passed on their FIRST attempt
+    by_user: dict = {}
+    for a in sorted(attempts, key=lambda x: x.get("attempted_at") or datetime.now(timezone.utc)):
+        uid = a["user_id"]
+        if uid not in by_user:
+            by_user[uid] = a.get("passed", False)
+    first_try_pass = sum(1 for v in by_user.values() if v)
+    first_try_rate = (first_try_pass / len(by_user) * 100) if by_user else 0
+
+    return {
+        "total_attempts": total,
+        "unique_users": unique_users,
+        "pass_rate_pct": round(len(passed) / total * 100, 1),
+        "avg_score": round(avg_score, 2),
+        "avg_time_sec": round(avg_time, 1),
+        "score_distribution": score_dist,
+        "question_failure_rate": q_fail_rate,
+        "first_try_pass_rate_pct": round(first_try_rate, 1),
+    }
 
 
 @router.post("/bot/reset")
