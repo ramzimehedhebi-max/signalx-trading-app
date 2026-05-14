@@ -58,7 +58,7 @@ export default function Profile() {
   const items: { icon: any; label: string; sub: string; onPress?: () => void }[] = [
     { icon: "shield-checkmark", label: t("profile.security"), sub: t("profile.security_sub") },
     { icon: "notifications", label: t("profile.notifications"), sub: t("profile.notifications_sub") },
-    { icon: "help-circle", label: t("profile.support"), sub: t("profile.support_sub") },
+    { icon: "help-circle", label: t("profile.support"), sub: t("profile.support_sub"), onPress: () => router.push("/help") },
   ];
 
   return (

@@ -468,5 +468,115 @@
     "worst_symbols": "Peores rendimientos",
     "open_positions": "Posiciones abiertas",
     "disclaimer": "🛈 Las estadísticas incluyen tanto paper como live trading."
+  },
+  "help": {
+    "title": "Ayuda y Soporte",
+    "hero_title": "Guía completa — De la A a la Z",
+    "hero_sub": "Todo lo que necesitas saber para usar SignalX y operar de forma segura en Binance.",
+    "safety_title": "🔒 Tus fondos se quedan contigo",
+    "safety_text": "SignalX NUNCA almacena tu dinero. Tu USDT, EUR y criptomonedas permanecen 100% en tu cuenta de Binance. SignalX solo envía órdenes de compra/venta a través de tus claves API (sin permiso de retiro).",
+    "s1": {
+      "title": "Crea tu cuenta de SignalX",
+      "step1_t": "Regístrate con email + contraseña",
+      "step1_d": "No se requiere tarjeta de crédito al principio. El plan Gratuito te da 3 pares y 5 predicciones de IA / día.",
+      "step2_t": "Activa las notificaciones push (opcional)",
+      "step2_d": "Recibirás una alerta cada vez que el bot abra/cierre una operación.",
+      "step3_t": "Hazte Premium cuando estés listo (€9.99/mes)",
+      "step3_d": "Desbloquea pares ilimitados, trading en vivo, backtest de 30 días, alertas prioritarias."
+    },
+    "s2": {
+      "title": "Dónde depositar tu dinero (en Binance)",
+      "intro": "SignalX no recibe tus fondos. Primero depositas dinero en Binance, luego conectas tu cuenta de Binance a SignalX. Aquí hay 3 formas de depositar:",
+      "opt1_t": "Tarjeta de crédito (rápido, ~2% comisiones)",
+      "opt1_d": "En la app de Binance → Depositar → \"Comprar con tarjeta\". Puedes comprar USDT directamente. Instantáneo.",
+      "opt2_t": "Transferencia SEPA (gratis, 1–2 días)",
+      "opt2_d": "Binance → Depositar → EUR → Transferencia SEPA. Obtén el IBAN, envía desde tu banco. Cuando llegue el dinero, convierte EUR → USDT.",
+      "opt3_t": "Cripto desde otra wallet (gratis*)",
+      "opt3_d": "Si ya tienes BTC/ETH en otro lugar (Coinbase, Kraken, hardware wallet), transfiérelos a Binance. Solo comisiones de red.",
+      "tip": "💡 Consejo: empieza con $100–$300 para probar. Siempre puedes agregar más después.",
+      "open_binance": "Abrir Binance"
+    },
+    "s3": {
+      "title": "Convertir a USDT",
+      "intro": "El bot opera exclusivamente en pares USDT (BTC/USDT, ETH/USDT…). Convierte tu saldo antes de conectar:",
+      "step1_t": "Ve a \"Spot\" en Binance",
+      "step1_d": "Pestaña principal de trading.",
+      "step2_t": "Haz clic en \"Convertir\"",
+      "step2_d": "Herramienta integrada, tipo de cambio instantáneo, ~0% comisiones.",
+      "step3_t": "Convierte EUR → USDT (o BTC → USDT)",
+      "step3_d": "Verifica tu saldo de USDT en la wallet Spot antes de continuar."
+    },
+    "s4": {
+      "title": "Conectar Binance a SignalX",
+      "intro": "Tus claves API permiten a SignalX enviar órdenes en tu cuenta. Están encriptadas con AES-128 en nuestra base de datos.",
+      "step1_t": "En Binance → Gestión de API → Crear API",
+      "step1_d": "Perfil → Gestión de API → \"Crear API\" → elige \"Generado por el sistema\".",
+      "step2_t": "HABILITA SOLO \"Trading Spot y Margen\"",
+      "step2_d": "Habilitar: ✅ Habilitar Trading Spot y Margen. Nada más.",
+      "step3_t": "DESHABILITA ABSOLUTAMENTE \"Retiros\"",
+      "step3_d": "❌ Habilitar Retiros — DESHABILITADO\n❌ Habilitar Transferencia Universal — DESHABILITADO\nEsto es CRÍTICO para la seguridad.",
+      "warning": "⚠️ Sin el permiso de Retiros, nadie puede retirar tus fondos — incluso si tus claves fueran comprometidas.",
+      "cta": "Conectar Binance ahora"
+    },
+    "s5": {
+      "title": "Configura tu Bot de IA",
+      "intro": "Dos modos disponibles. Siempre empieza con PAPER.",
+      "paper_label": "PAPER (simulación)",
+      "paper_desc": "No se usa dinero real. Capital virtual por defecto: 1000 USDT. Ideal para probar la estrategia 1–2 semanas antes de pasar a LIVE.",
+      "live_label": "LIVE (dinero real)",
+      "live_desc": "El bot ejecuta órdenes reales en Binance. Límite por defecto: $50 máx. por operación (editable en configuración del bot).",
+      "recommended": "Configuración recomendada (principiante)",
+      "rec1": "Capital: tu saldo real de USDT",
+      "rec2": "Tamaño de posición: 10–20%",
+      "rec3": "Posiciones máx.: 3–5",
+      "rec4": "Stop-loss: 3% / Take-profit: 8–10%",
+      "rec5": "Pares: BTC, ETH, SOL para empezar (volatilidad controlada)"
+    },
+    "s6": {
+      "title": "Monitorea tu rendimiento",
+      "b1": "Pestaña Bot: posiciones abiertas, P&L no realizado, insignias de funciones activadas",
+      "b2": "Dashboard P&L: gráfico de evolución de capital, tasa de aciertos, drawdown, mejores símbolos",
+      "b3": "Notificaciones push: alerta en cada operación abierta / cerrada"
+    },
+    "s7": {
+      "title": "Cómo retirar tus ganancias",
+      "reminder": "SignalX nunca toca tu dinero. Retiras directamente desde Binance.",
+      "step1_t": "Ve a Binance (web o app)",
+      "step1_d": "Inicia sesión en tu cuenta de Binance.",
+      "step2_t": "Verifica tu saldo en Wallet Spot",
+      "step2_d": "Tu saldo refleja todas las ganancias/pérdidas del bot en tiempo real.",
+      "step3_t": "Convierte USDT → EUR (si es necesario)",
+      "step3_d": "Spot → Convertir → USDT a EUR. Tipo de cambio instantáneo.",
+      "step4_t": "Retirar → Transferencia SEPA a tu banco",
+      "step4_d": "Retiro → elige SEPA → ingresa tu IBAN → recibido en 1–2 días hábiles (gratis).",
+      "stop_title": "Para detener el bot",
+      "stop_desc": "Pestaña Bot → cambia \"BOT ACTIVO\" → OFF. O usa el Kill-switch en configuración para pausa instantánea sin cerrar posiciones abiertas."
+    },
+    "s8": {
+      "title": "Seguridad — Nunca te saltes estos pasos",
+      "b1": "NUNCA compartas tus claves API con nadie (ni siquiera con soporte de Binance)",
+      "b2": "Habilita 2FA (Google Authenticator) en Binance Y SignalX",
+      "b3": "Deshabilita \"Habilitar Retiros\" en tus claves API de Binance",
+      "b4": "En caso de duda, revoca las claves en Binance instantáneamente",
+      "b5": "Tus claves están encriptadas con AES-128 en nuestra base de datos — ilegibles incluso por soporte"
+    },
+    "faq": {
+      "title": "Preguntas frecuentes",
+      "q1": "¿Puede el bot perder mi dinero?",
+      "a1": "Sí, como cualquier herramienta de trading. El stop-loss limita la pérdida por operación (~3% por defecto). Empieza con PAPER para validar la estrategia.",
+      "q2": "¿Cómo cancelo mi suscripción Premium?",
+      "a2": "Perfil → Premium → \"Cancelar suscripción\". Mantienes el acceso hasta el final del período pagado.",
+      "q3": "¿El bot opera mientras duermo?",
+      "a3": "Sí, 24/7. El bot escanea los mercados cada 5 minutos. Puedes deshabilitarlo en cualquier momento con el interruptor.",
+      "q4": "¿Por qué el bot no abre posiciones?",
+      "a4": "Está esperando señales fuertes (RSI + EMA + validación de Claude AI). Paciencia — un bot que no abre es un bot que no pierde.",
+      "q5": "¿Mis claves API son realmente seguras?",
+      "a5": "Sí. Están encriptadas con AES-128 antes del almacenamiento. Nadie — ni siquiera soporte — puede leerlas en claro. Además, sin permiso de Retiro, solo pueden usarse para trading."
+    },
+    "contact": {
+      "title": "¿Necesitas ayuda?",
+      "text": "Escríbenos, respondemos en 24 horas hábiles."
+    },
+    "footer": "El trading de criptomonedas conlleva riesgo. El rendimiento pasado no garantiza resultados futuros."
   }
 }

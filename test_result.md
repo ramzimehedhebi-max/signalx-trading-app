@@ -671,3 +671,51 @@ agent_communication:
 
         No backend testing needed — same test suite still passes. Frontend not touched.
 
+    - agent: "main"
+      message: |
+        HELP & SUPPORT GUIDE shipped — comprehensive A-to-Z onboarding screen.
+
+        FRONTEND (/app/frontend/app/help.tsx — NEW screen):
+        ─ Full A-to-Z guide at route /help, accessible via Profile → "Help & Support".
+        ─ 9 sections + FAQ + Contact:
+            1. Safety banner: "Your funds stay with you" — emphasizes SignalX never stores money
+            2. 📝 Create SignalX account (3 numbered steps: email signup, push notifs, premium)
+            3. 💰 Where to put your money on Binance (3 sub-options with icons):
+                 • Credit card (~2% fees, instant)
+                 • SEPA transfer (free, 1-2 days)
+                 • Crypto from another wallet (network fees only)
+              + tip box "start with €100-300"
+              + CTA "Open Binance" → opens https://accounts.binance.com/register
+            4. 🔄 Convert to USDT (3 steps with conversion path)
+            5. 🔗 Connect Binance to SignalX (3 steps + critical danger box for Withdrawals permission)
+              + CTA "Connect Binance now" → routes to /binance-connect
+            6. ⚙️ Configure AI Bot (Paper vs Live mode blocks + 5 recommended beginner settings)
+            7. 📊 Monitor performance (Bot tab + P&L Dashboard + push notifs)
+            8. 💸 How to withdraw gains — DIRECTLY from Binance, 4 steps:
+                 reminder box → Spot Wallet → Convert USDT→EUR → SEPA withdrawal
+              + "How to stop the bot" subsection (kill-switch info)
+            9. 🛡️ Security — 5 critical rules (danger bullets for "never share keys", "disable Withdrawals")
+           10. ❓ FAQ — 5 common questions (can bot lose money, cancel premium, 24/7 trading, why no positions, keys security)
+           11. 📞 Contact — mailto:support@signall.app link
+
+        REUSABLE COMPONENTS in help.tsx: Section, Step (numbered), SubSection (icon-based),
+        Bullet (with optional danger style), Faq
+
+        I18N — added `help.*` namespace (~88 nested keys) to all 8 locales:
+          • FR + EN: hand-written native content (7461 chars FR, 6368 chars EN)
+          • AR, ES, DE, IT, PT, ZH: auto-translated via Claude Sonnet 4.5 (scripts/translate_i18n.py)
+          • All locales now have 502 keys total
+
+        Wiring: Profile screen "Help & Support" row gets onPress → router.push("/help")
+
+        BACKEND FIX (sneaked in): routes/market.py was missing the DEFAULT_SYMBOLS constant
+        from the refactor (caused /api/market/tickers → 500). Restored the list inline at top of
+        the module. Confirmed via live logs: /market/tickers now returns 200 OK.
+
+        VISUAL VALIDATION: Screenshot captured of /help in French, all 5 first sections render
+        cleanly (hero, safety banner, step cards, sub-section icons with colored backgrounds,
+        tip box, CTA button). RTL Arabic also functional (i18n).
+
+        No backend tests needed (no business logic touched). No frontend regression — Profile
+        screen + Help screen both render correctly.
+

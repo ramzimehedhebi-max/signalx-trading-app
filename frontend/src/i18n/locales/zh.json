@@ -468,5 +468,115 @@
     "worst_symbols": "最差表现",
     "open_positions": "持仓",
     "disclaimer": "🛈 统计数据包含模拟和实盘交易。"
+  },
+  "help": {
+    "title": "Help & Support",
+    "hero_title": "Complete guide — A to Z",
+    "hero_sub": "Everything you need to know to use SignalX and trade safely on Binance.",
+    "safety_title": "🔒 Your funds stay with you",
+    "safety_text": "SignalX NEVER stores your money. Your USDT, EUR and crypto stay 100% on your Binance account. SignalX only sends buy/sell orders via your API keys (without withdrawal permission).",
+    "s1": {
+      "title": "Create your SignalX account",
+      "step1_t": "Sign up with email + password",
+      "step1_d": "No credit card required at the start. The Free plan gives you 3 pairs and 5 AI predictions / day.",
+      "step2_t": "Enable push notifications (optional)",
+      "step2_d": "You'll get an alert every time the bot opens/closes a trade.",
+      "step3_t": "Go Premium when ready (€9.99/month)",
+      "step3_d": "Unlocks unlimited pairs, Live trading, 30-day backtest, priority alerts."
+    },
+    "s2": {
+      "title": "Where to put your money (on Binance)",
+      "intro": "SignalX does not receive your funds. You first deposit money on Binance, then connect your Binance account to SignalX. Here are 3 ways to deposit:",
+      "opt1_t": "Credit card (fast, ~2% fees)",
+      "opt1_d": "In the Binance app → Deposit → \"Buy with card\". You can buy USDT directly. Instant.",
+      "opt2_t": "SEPA transfer (free, 1–2 days)",
+      "opt2_d": "Binance → Deposit → EUR → SEPA transfer. Get the IBAN, send from your bank. When money arrives, convert EUR → USDT.",
+      "opt3_t": "Crypto from another wallet (free*)",
+      "opt3_d": "If you already have BTC/ETH elsewhere (Coinbase, Kraken, hardware wallet), transfer them to Binance. Network fees only.",
+      "tip": "💡 Tip: start with $100–$300 to test. You can always add more later.",
+      "open_binance": "Open Binance"
+    },
+    "s3": {
+      "title": "Convert to USDT",
+      "intro": "The bot trades exclusively in USDT pairs (BTC/USDT, ETH/USDT…). Convert your balance before connecting:",
+      "step1_t": "Go to \"Spot\" on Binance",
+      "step1_d": "Main trading tab.",
+      "step2_t": "Click \"Convert\"",
+      "step2_d": "Built-in tool, instant exchange rate, ~0% fees.",
+      "step3_t": "Convert EUR → USDT (or BTC → USDT)",
+      "step3_d": "Check your USDT balance in the Spot wallet before continuing."
+    },
+    "s4": {
+      "title": "Connect Binance to SignalX",
+      "intro": "Your API keys allow SignalX to send orders on your account. They are AES-128 encrypted in our database.",
+      "step1_t": "On Binance → API Management → Create API",
+      "step1_d": "Profile → API Management → \"Create API\" → choose \"System generated\".",
+      "step2_t": "ENABLE ONLY \"Spot & Margin Trading\"",
+      "step2_d": "Enable: ✅ Enable Spot & Margin Trading. Nothing else.",
+      "step3_t": "ABSOLUTELY DISABLE \"Withdrawals\"",
+      "step3_d": "❌ Enable Withdrawals — DISABLED\n❌ Enable Universal Transfer — DISABLED\nThis is CRITICAL for security.",
+      "warning": "⚠️ Without the Withdrawals permission, no one can withdraw your funds — even if your keys were compromised.",
+      "cta": "Connect Binance now"
+    },
+    "s5": {
+      "title": "Configure your AI Bot",
+      "intro": "Two modes available. Always start with PAPER.",
+      "paper_label": "PAPER (simulation)",
+      "paper_desc": "No real money used. Default virtual capital: 1000 USDT. Ideal to test the strategy 1–2 weeks before going LIVE.",
+      "live_label": "LIVE (real money)",
+      "live_desc": "The bot executes real orders on Binance. Default limit: $50 max per trade (editable in bot settings).",
+      "recommended": "Recommended settings (beginner)",
+      "rec1": "Capital: your real USDT balance",
+      "rec2": "Position size: 10–20%",
+      "rec3": "Max positions: 3–5",
+      "rec4": "Stop-loss: 3% / Take-profit: 8–10%",
+      "rec5": "Pairs: BTC, ETH, SOL to start (controlled volatility)"
+    },
+    "s6": {
+      "title": "Monitor your performance",
+      "b1": "Bot tab: open positions, unrealized P&L, badges of activated features",
+      "b2": "P&L Dashboard: capital evolution chart, win-rate, drawdown, top symbols",
+      "b3": "Push notifications: alert at every trade opened / closed"
+    },
+    "s7": {
+      "title": "How to withdraw your gains",
+      "reminder": "SignalX never touches your money. You withdraw directly from Binance.",
+      "step1_t": "Go to Binance (web or app)",
+      "step1_d": "Sign in to your Binance account.",
+      "step2_t": "Check your balance in Spot Wallet",
+      "step2_d": "Your balance reflects all bot gains/losses in real time.",
+      "step3_t": "Convert USDT → EUR (if needed)",
+      "step3_d": "Spot → Convert → USDT to EUR. Instant rate.",
+      "step4_t": "Withdraw → SEPA transfer to your bank",
+      "step4_d": "Withdrawal → choose SEPA → enter your IBAN → received in 1–2 business days (free).",
+      "stop_title": "To stop the bot",
+      "stop_desc": "Bot tab → toggle \"BOT ACTIVE\" → OFF. Or use the Kill-switch in settings for instant pause without closing open positions."
+    },
+    "s8": {
+      "title": "Security — Never skip these steps",
+      "b1": "NEVER share your API keys with anyone (not even Binance support)",
+      "b2": "Enable 2FA (Google Authenticator) on Binance AND SignalX",
+      "b3": "Disable \"Enable Withdrawals\" on your Binance API keys",
+      "b4": "In doubt, revoke the keys on Binance instantly",
+      "b5": "Your keys are AES-128 encrypted in our database — unreadable even by support"
+    },
+    "faq": {
+      "title": "Frequently asked questions",
+      "q1": "Can the bot lose my money?",
+      "a1": "Yes, like any trading tool. Stop-loss limits the loss per trade (~3% by default). Start with PAPER to validate the strategy.",
+      "q2": "How do I cancel my Premium subscription?",
+      "a2": "Profile → Premium → \"Cancel subscription\". You keep access until the end of the paid period.",
+      "q3": "Does the bot trade while I sleep?",
+      "a3": "Yes, 24/7. The bot scans markets every 5 minutes. You can disable it anytime via the toggle.",
+      "q4": "Why isn't the bot opening positions?",
+      "a4": "It's waiting for strong signals (RSI + EMA + Claude AI validation). Patience — a bot that doesn't open is a bot that doesn't lose.",
+      "q5": "Are my API keys really safe?",
+      "a5": "Yes. They are AES-128 encrypted before storage. No one — not even support — can read them in clear. Plus, without Withdrawal permission, they can only be used for trading."
+    },
+    "contact": {
+      "title": "Need help?",
+      "text": "Drop us a line, we reply within 24 business hours."
+    },
+    "footer": "Crypto trading involves risk. Past performance does not guarantee future results."
   }
 }

@@ -7,6 +7,13 @@ from core import db, get_current_user, BINANCE_BASE, EMERGENT_LLM_KEY
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
+
+DEFAULT_SYMBOLS = [
+    "BTCUSDT", "ETHUSDT", "SOLUSDT", "BNBUSDT", "XRPUSDT",
+    "ADAUSDT", "DOGEUSDT", "AVAXUSDT", "LINKUSDT", "DOTUSDT",
+    "MATICUSDT", "LTCUSDT", "ATOMUSDT", "NEARUSDT", "ARBUSDT",
+    "OPUSDT", "INJUSDT", "TIAUSDT", "SUIUSDT", "APTUSDT",
+]
 @router.get("/market/tickers")
 async def get_tickers(symbols: Optional[str] = None):
     """Get 24h ticker stats. symbols param is comma-separated, optional."""
