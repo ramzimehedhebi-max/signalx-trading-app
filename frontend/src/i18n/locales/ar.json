@@ -229,7 +229,11 @@
     "language": "اللغة",
     "notifications": "التنبيهات",
     "support": "الدعم والمساعدة",
-    "version": "الإصدار {{v}}"
+    "version": "الإصدار {{v}}",
+    "security": "الأمان",
+    "security_sub": "كلمة المرور و 2FA (قريباً)",
+    "notifications_sub": "إشعارات الأسعار (قريباً)",
+    "support_sub": "الأسئلة الشائعة والدعم"
   },
   "premium": {
     "title": "مميز",

@@ -561,3 +561,62 @@ agent_communication:
             check the From header in Resend dashboard / metadata — DO NOT spam, just 1 send)
 
         FRONTEND TESTING — pending user permission.
+    - agent: "main"
+      message: |
+        P1 — ADVANCED P&L DASHBOARD shipped + frontend regression FULLY PASSED.
+
+        BACKEND:
+        ─ NEW endpoint GET /api/bot/analytics (in server.py, alongside /bot/stats).
+          Returns rich analytics:
+            • capital_start, capital_current, realized_pnl, unrealized_pnl, total_pnl, total_pnl_pct
+            • trades_count, wins, losses, breakevens, win_rate_pct
+            • avg_win, avg_loss, profit_factor, avg_duration_hours
+            • best_trade {symbol, pnl, pnl_pct}, worst_trade {…}
+            • max_drawdown (USD) + max_drawdown_pct (computed from running peak)
+            • top_symbols (top 5 by realized P&L) + worst_symbols (bottom 3 if negative)
+            • by_reason dict (exit_reason → count)
+            • equity_curve: list[{t, equity, pnl}] (cumulative running balance per closed trade)
+            • open_positions list with real-time price + unrealized P&L
+          Live-prices pulled from Binance /api/v3/ticker/price for unrealized calc.
+        ─ Tested via curl: returns valid JSON for trader@test.com. No regressions on existing endpoints
+          (re-ran /app/backend_test.py — 19/19 still PASS).
+
+        FRONTEND (/app/frontend/app/pnl.tsx — NEW screen):
+        ─ Full P&L dashboard at route /pnl, accessible via "View full P&L analytics" CTA on Bot tab.
+        ─ Sections (with react-native-svg charts, no external chart lib):
+            1. HERO: CURRENT CAPITAL big number + P&L pill (green/red) + REALIZED/UNREALIZED split
+            2. 📈 Capital evolution: SVG line+area chart with gradient fill, dashed midline grid,
+               end-of-line dot marker
+            3. 🎯 Win-rate breakdown: SVG donut chart (winRate% in center) + 3-line legend
+               (Wins/Losses/Breakeven with colored dots + count + %) + 4-stat grid below
+               (AVG WIN / AVG LOSS / PROFIT FACTOR / AVG DURATION)
+            4. 🏆 BEST + 💀 WORST trade cards side by side
+            5. 📉 Max drawdown card (with USD + pct + explanation)
+            6. 🥇 Top profitable + 📉 Worst symbols (clickable rows with trades count + winrate)
+            7. 🔓 Open positions live with entry/now prices and current P&L
+            8. Disclaimer footer
+        ─ Pull-to-refresh, back chevron in header, gracefully handles empty state ("Pas encore de trades").
+
+        I18N: 24 new `pnl.*` keys added in all 8 locales (en/fr/es/de/it/pt/ar/zh).
+              Plus `bot.see_full_analytics` CTA key in all locales.
+              Plus the 4 missing profile.* keys (security, security_sub, notifications_sub, support_sub)
+              + `auth.logout` replaces the remaining hardcoded "Se déconnecter" on Profile.
+
+        FRONTEND TESTING AGENT — 10/10 scenarios PASS:
+        ✅ Welcome + Login flow
+        ✅ Home dashboard with all sections
+        ✅ Markets tab with 4 sub-tabs + search
+        ✅ Signals tab AI analysis end-to-end
+        ✅ Bot tab — new "View full P&L analytics" button visible + routes to /pnl correctly
+        ✅ /pnl Dashboard — all 8 sections render correctly (SVG charts, hero, splits, badges)
+        ✅ Strategy badges (all 6) display: Trailing SL, Compounding, AI Predictive, Diversification, Trailing TP, Partial TP
+        ✅ Bot SettingsSheet — ADVANCED FEATURES section with 3 toggles + 7 conditional inputs all work
+        ✅ Profile + Language picker switches across 8 langs (incl. RTL Arabic)
+        ✅ Premium hero "You're Premium 👑" for lifetime account
+        ✅ Backtest screen with period chips
+        ✅ NO regressions, NO untranslated keys, NO JS errors
+
+        REFACTORING (P3) STATUS: Foundation laid (core/__init__.py + models/__init__.py + REFACTOR_PLAN.md).
+        Full migration of server.py to use services/routes packages is documented for a dedicated future
+        session — too risky to complete in this multi-tasking chat without breaking the 19-test baseline.
+

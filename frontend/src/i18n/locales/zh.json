@@ -229,7 +229,11 @@
     "language": "语言",
     "notifications": "通知",
     "support": "帮助与支持",
-    "version": "版本 {{v}}"
+    "version": "版本 {{v}}",
+    "security": "安全",
+    "security_sub": "密码与 2FA（即将推出）",
+    "notifications_sub": "价格推送提醒（即将推出）",
+    "support_sub": "常见问题与支持"
   },
   "premium": {
     "title": "高级会员",

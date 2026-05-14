@@ -56,9 +56,9 @@ export default function Profile() {
   };
 
   const items: { icon: any; label: string; sub: string; onPress?: () => void }[] = [
-    { icon: "shield-checkmark", label: "Sécurité", sub: "Mot de passe & 2FA (bientôt)" },
-    { icon: "notifications", label: t("profile.notifications"), sub: "Alertes prix push (bientôt)" },
-    { icon: "help-circle", label: t("profile.support"), sub: "FAQ et support" },
+    { icon: "shield-checkmark", label: t("profile.security"), sub: t("profile.security_sub") },
+    { icon: "notifications", label: t("profile.notifications"), sub: t("profile.notifications_sub") },
+    { icon: "help-circle", label: t("profile.support"), sub: t("profile.support_sub") },
   ];
 
   return (
@@ -180,7 +180,7 @@ export default function Profile() {
 
         <TouchableOpacity style={styles.logout} onPress={onLogout} testID="profile-logout-btn">
           <Ionicons name="log-out-outline" color={theme.colors.danger} size={18} />
-          <Text style={styles.logoutText}>Se déconnecter</Text>
+          <Text style={styles.logoutText}>{t("auth.logout")}</Text>
         </TouchableOpacity>
 
         <Text style={styles.version}>SignalX v1.0 · Powered by Claude Sonnet 4.5</Text>

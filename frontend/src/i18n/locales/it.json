@@ -229,7 +229,11 @@
     "language": "Lingua",
     "notifications": "Notifiche",
     "support": "Aiuto & Supporto",
-    "version": "Versione {{v}}"
+    "version": "Versione {{v}}",
+    "security": "Sicurezza",
+    "security_sub": "Password e 2FA (presto)",
+    "notifications_sub": "Avvisi prezzo push (presto)",
+    "support_sub": "FAQ e supporto"
   },
   "premium": {
     "title": "Premium",

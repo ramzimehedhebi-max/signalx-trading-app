@@ -252,7 +252,11 @@
     "language": "Langue",
     "notifications": "Notifications",
     "support": "Aide & Support",
-    "version": "Version {{v}}"
+    "version": "Version {{v}}",
+    "security": "Sécurité",
+    "security_sub": "Mot de passe & 2FA (bientôt)",
+    "notifications_sub": "Alertes prix push (bientôt)",
+    "support_sub": "FAQ et support"
   },
   "predict": {
     "title": "Prédictions IA",
