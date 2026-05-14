@@ -132,6 +132,14 @@ class BacktestReq(BaseModel):
 
 
 # ============ BOT ============
+# Default pairs for a new user's bot (must match services/bot_engine.DEFAULT_BOT_PAIRS)
+_DEFAULT_BOT_PAIRS = [
+    "BTCUSDT", "ETHUSDT", "SOLUSDT", "BNBUSDT", "XRPUSDT",
+    "ADAUSDT", "DOGEUSDT", "AVAXUSDT", "LINKUSDT", "DOTUSDT",
+    "MATICUSDT", "LTCUSDT", "ATOMUSDT", "NEARUSDT", "ARBUSDT",
+]
+
+
 class BotConfig(BaseModel):
     user_id: str
     enabled: bool = False
@@ -164,7 +172,7 @@ class BotConfig(BaseModel):
     live_mode: bool = False
     live_max_position_usdt: float = 50.0
     live_killswitch: bool = False
-    pairs: List[str] = Field(default_factory=list)
+    pairs: List[str] = Field(default_factory=lambda: _DEFAULT_BOT_PAIRS.copy())
     last_run_at: Optional[datetime] = None
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 

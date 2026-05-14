@@ -620,3 +620,54 @@ agent_communication:
         Full migration of server.py to use services/routes packages is documented for a dedicated future
         session — too risky to complete in this multi-tasking chat without breaking the 19-test baseline.
 
+    - agent: "main"
+      message: |
+        REFACTORING COMPLETE — server.py decomposed from 2838 → 60 lines.
+
+        Architecture now:
+        /app/backend/
+          server.py (60 lines: app + CORS + router includes + lifespan)
+          core/__init__.py (DB singleton, JWT helpers, env constants, get_current_user)
+          models/__init__.py (all Pydantic models, 245 lines)
+          services/
+            ai.py (Claude integration + prediction caching)
+            binance_helpers.py (_get_user_binance)
+            bot_engine.py (categories, close, partial close, check positions, evaluate entries — 620 lines)
+            bot_loop.py (background asyncio loop + _start_bot)
+            indicators.py (SMA/EMA/RSI + _eval_signal)
+            notifications.py (_send_push + _create_notification)
+            premium_svc.py (_get_premium_status)
+          routes/
+            auth.py, market.py, signals.py, watchlist.py, portfolio.py,
+            notifications.py, binance.py, premium.py, bot.py, backtest.py, predict.py
+
+        Stats:
+          BEFORE: 1 file, 2838 lines
+          AFTER:  19 files in 4 packages, 60-line server.py
+          Dependency flow: routes → services → core, routes → models, services → models, NO cycles
+
+        Validation:
+          ✅ Backend boots clean (logs: "Bot engine loop started" from services.bot_loop)
+          ✅ 19/19 backend_test.py tests PASS (all advanced bot features still working)
+          ✅ Live traffic logs show all endpoints returning 200 OK
+          ✅ Bot engine continues running: BOT TRAIL ACTIVATED, BOT PARTIAL, BOT TP-TRAIL ARMED,
+             BOT DIVERSIF — all logged from services.bot_engine (proves modules are loaded)
+          ✅ Email reset still functional via Resend (logs: "[email] reset code sent to=...")
+
+        Fixes applied during refactor:
+          - email_service import name corrected: send_password_reset_email → send_reset_code_email
+          - Duplicate inline Pydantic class definitions removed in notifications/premium/backtest/predict
+            (kept the import from models)
+          - _close_position function was missing from extraction range — added by surgical patch
+          - Duplicate _bot_loop removed from bot_engine.py (kept only in bot_loop.py)
+          - models.BotConfig.pairs default factory uses _DEFAULT_BOT_PAIRS to preserve behavior
+          - @app.get → @router.get for stripe/return + stripe/webhook in routes/premium.py
+          - @app.on_event removed from bot_loop._start_bot (called from server.py startup instead)
+
+        Cleanup:
+          - /app/backend/server.py.bak removed
+          - /app/scripts/refactor_extract.py removed
+          - /app/backend/REFACTOR_PLAN.md rewritten as architecture documentation
+
+        No backend testing needed — same test suite still passes. Frontend not touched.
+
