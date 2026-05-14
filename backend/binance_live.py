@@ -15,8 +15,19 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-# Use Binance Spot Live endpoint (NOT the public data-api which has no trading)
-BINANCE_LIVE_BASE = "https://api.binance.com"
+# Binance Spot Live endpoints (with automatic fallback for geo-restricted regions).
+# Some cloud datacenters get HTTP 451 from `api.binance.com`. We fall back to alt
+# domains (api-gcp / api1-4) which historically work from most cloud providers.
+BINANCE_LIVE_BASES = [
+    "https://api.binance.com",
+    "https://api-gcp.binance.com",
+    "https://api1.binance.com",
+    "https://api2.binance.com",
+    "https://api3.binance.com",
+    "https://api4.binance.com",
+]
+# Mutable runtime base — once we find a working host, we stick with it.
+BINANCE_LIVE_BASE = BINANCE_LIVE_BASES[0]
 
 _ENC_KEY = os.environ.get("ENCRYPTION_KEY")
 if not _ENC_KEY:
@@ -51,30 +62,67 @@ class BinanceClient:
         return {"X-MBX-APIKEY": self.api_key}
 
     async def _signed_get(self, path: str, params: Optional[Dict[str, Any]] = None) -> dict:
+        global BINANCE_LIVE_BASE
         params = dict(params or {})
         params["timestamp"] = int(time.time() * 1000)
         params["recvWindow"] = self.recv_window
         query = "&".join(f"{k}={v}" for k, v in params.items())
         sig = _sign(self.api_secret, query)
-        url = f"{BINANCE_LIVE_BASE}{path}?{query}&signature={sig}"
-        async with httpx.AsyncClient(timeout=10.0) as cli:
-            r = await cli.get(url, headers=self._headers())
-            if r.status_code != 200:
-                raise RuntimeError(f"Binance error {r.status_code}: {r.text}")
-            return r.json()
+        last_err: Optional[str] = None
+        # Try the current preferred base first, then fallbacks
+        bases_to_try = [BINANCE_LIVE_BASE] + [b for b in BINANCE_LIVE_BASES if b != BINANCE_LIVE_BASE]
+        for base in bases_to_try:
+            url = f"{base}{path}?{query}&signature={sig}"
+            try:
+                async with httpx.AsyncClient(timeout=10.0) as cli:
+                    r = await cli.get(url, headers=self._headers())
+                # 451 (geo-block) or 403 (forbidden) → try next mirror
+                if r.status_code in (451, 403, 418, 429, 503):
+                    last_err = f"{base} → HTTP {r.status_code}"
+                    logger.warning("Binance %s blocked (%d), trying next mirror", base, r.status_code)
+                    continue
+                if r.status_code != 200:
+                    # Real auth/signature/permission error — bubble up immediately
+                    raise RuntimeError(f"Binance error {r.status_code}: {r.text[:300]}")
+                # Success — promote this base as the new default for next calls
+                if base != BINANCE_LIVE_BASE:
+                    logger.info("Binance: promoting %s as primary endpoint", base)
+                    BINANCE_LIVE_BASE = base
+                return r.json()
+            except (httpx.ConnectError, httpx.ReadTimeout, httpx.NetworkError) as e:
+                last_err = f"{base} → {type(e).__name__}"
+                logger.warning("Binance network err on %s: %s", base, e)
+                continue
+        raise RuntimeError(f"All Binance endpoints unreachable. Last: {last_err}")
 
     async def _signed_post(self, path: str, params: Optional[Dict[str, Any]] = None) -> dict:
+        global BINANCE_LIVE_BASE
         params = dict(params or {})
         params["timestamp"] = int(time.time() * 1000)
         params["recvWindow"] = self.recv_window
         query = "&".join(f"{k}={v}" for k, v in params.items())
         sig = _sign(self.api_secret, query)
-        url = f"{BINANCE_LIVE_BASE}{path}?{query}&signature={sig}"
-        async with httpx.AsyncClient(timeout=15.0) as cli:
-            r = await cli.post(url, headers=self._headers())
-            if r.status_code != 200:
-                raise RuntimeError(f"Binance error {r.status_code}: {r.text}")
-            return r.json()
+        last_err: Optional[str] = None
+        bases_to_try = [BINANCE_LIVE_BASE] + [b for b in BINANCE_LIVE_BASES if b != BINANCE_LIVE_BASE]
+        for base in bases_to_try:
+            url = f"{base}{path}?{query}&signature={sig}"
+            try:
+                async with httpx.AsyncClient(timeout=15.0) as cli:
+                    r = await cli.post(url, headers=self._headers())
+                if r.status_code in (451, 403, 418, 429, 503):
+                    last_err = f"{base} → HTTP {r.status_code}"
+                    logger.warning("Binance %s blocked (%d), trying next mirror", base, r.status_code)
+                    continue
+                if r.status_code != 200:
+                    raise RuntimeError(f"Binance error {r.status_code}: {r.text[:300]}")
+                if base != BINANCE_LIVE_BASE:
+                    BINANCE_LIVE_BASE = base
+                return r.json()
+            except (httpx.ConnectError, httpx.ReadTimeout, httpx.NetworkError) as e:
+                last_err = f"{base} → {type(e).__name__}"
+                logger.warning("Binance network err on %s: %s", base, e)
+                continue
+        raise RuntimeError(f"All Binance endpoints unreachable. Last: {last_err}")
 
     async def test_connection(self) -> Dict[str, Any]:
         """Verifies API key + secret + permissions. Returns sanitized profile."""

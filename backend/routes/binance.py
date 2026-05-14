@@ -12,15 +12,67 @@ from binance_live import BinanceClient, encrypt_str, decrypt_str
 from services.binance_helpers import _get_user_binance
 
 @router.post("/binance/connect")
-async def binance_connect(req: BinanceConnectReq, user=Depends(get_current_user)):
+async def binance_connect(req: BinanceConnectReq, force: bool = False, user=Depends(get_current_user)):
     if not req.api_key or not req.api_secret or len(req.api_key) < 20 or len(req.api_secret) < 20:
         raise HTTPException(status_code=400, detail="Clés invalides")
-    # First, validate the keys against Binance
+
+    # If force=true, skip pre-validation and just store. Used when the cloud
+    # server can't reach Binance (geo-block) but the user wants to save anyway.
+    if force:
+        await db.users.update_one(
+            {"id": user["id"]},
+            {
+                "$set": {
+                    "binance_api_key_enc": encrypt_str(req.api_key),
+                    "binance_api_secret_enc": encrypt_str(req.api_secret),
+                    "binance_connected_at": datetime.now(timezone.utc),
+                    "binance_can_trade": True,  # optimistic; bot will verify on first order
+                    "binance_unverified": True,
+                }
+            },
+        )
+        logger.warning("Binance connected user=%s WITHOUT validation (force=true)", user.get("id"))
+        return {
+            "ok": True,
+            "unverified": True,
+            "can_trade": True,
+            "account_type": "UNVERIFIED",
+            "balances": [],
+        }
+
+    # Normal path: validate against Binance (with automatic mirror fallback)
     try:
         cli = BinanceClient(req.api_key, req.api_secret)
         info = await cli.test_connection()
     except Exception as e:
-        raise HTTPException(status_code=400, detail=f"Échec de connexion à Binance : {str(e)[:200]}")
+        msg = str(e)[:300]
+        logger.error("Binance connect validation failed user=%s err=%s", user.get("id"), msg)
+        # Distinguish geo-block vs bad credentials for clearer UX
+        if "All Binance endpoints unreachable" in msg or "451" in msg or "403" in msg:
+            raise HTTPException(
+                status_code=503,
+                detail=(
+                    "GEO_BLOCKED|Le serveur ne peut pas joindre Binance depuis sa localisation (restriction géographique). "
+                    "Tu peux quand même sauvegarder tes clés en mode avancé — le bot tentera de les valider plus tard."
+                ),
+            )
+        if "-2014" in msg or "-2015" in msg or "Signature" in msg or "Invalid API" in msg or "401" in msg:
+            raise HTTPException(
+                status_code=400,
+                detail=(
+                    "Clés API invalides ou mal copiées. Vérifie que tu as bien copié les 64 caractères "
+                    "de l'API Key ET du Secret, sans espaces."
+                ),
+            )
+        if "IP" in msg and ("restrict" in msg or "white" in msg or "-2015" in msg):
+            raise HTTPException(
+                status_code=400,
+                detail=(
+                    "Tu as activé la restriction par IP sur ta clé Binance, mais notre serveur n'est pas "
+                    "dans la liste. Désactive la restriction IP ou crée une nouvelle clé sans restriction."
+                ),
+            )
+        raise HTTPException(status_code=400, detail=f"Échec de connexion à Binance : {msg}")
     if not info.get("can_trade"):
         raise HTTPException(
             status_code=400,
@@ -41,9 +93,11 @@ async def binance_connect(req: BinanceConnectReq, user=Depends(get_current_user)
                 "binance_api_secret_enc": encrypt_str(req.api_secret),
                 "binance_connected_at": datetime.now(timezone.utc),
                 "binance_can_trade": True,
+                "binance_unverified": False,
             }
         },
     )
+    logger.info("Binance connected user=%s account_type=%s", user.get("id"), info.get("account_type"))
     return {
         "ok": True,
         "can_trade": info["can_trade"],

@@ -52,26 +52,53 @@ export default function BinanceConnectScreen() {
     loadStatus();
   }, [loadStatus]);
 
+  const doConnect = async (force: boolean) => {
+    setBusy(true);
+    try {
+      const res = await api.binanceConnect(apiKey.trim(), apiSecret.trim(), force);
+      setApiKey("");
+      setApiSecret("");
+      if (res.unverified) {
+        Alert.alert(
+          "✅ Clés sauvegardées (non vérifiées)",
+          "Tes clés Binance sont stockées en sécurité (chiffrement AES). Le bot tentera de les valider à sa prochaine exécution. Si Binance n'est pas joignable, tu seras prévenu via les notifications."
+        );
+      } else {
+        Alert.alert(
+          t("binance.success_title"),
+          t("binance.success_msg", { type: res.account_type || "SPOT", trade: res.can_trade ? t("common.yes") : t("common.no") })
+        );
+      }
+      await loadStatus();
+    } catch (e: any) {
+      const msg = e?.message || "";
+      // Backend signals geo-block with prefix "GEO_BLOCKED|"
+      if (msg.includes("GEO_BLOCKED") || msg.includes("503")) {
+        Alert.alert(
+          "⚠️ Binance non joignable depuis le serveur",
+          "Notre serveur cloud est temporairement bloqué par Binance (restriction géographique). Tu peux sauvegarder tes clés quand même — elles seront chiffrées en AES-128 et le bot les utilisera dès que la connexion sera rétablie.",
+          [
+            { text: "Annuler", style: "cancel" },
+            {
+              text: "Sauvegarder quand même",
+              onPress: () => doConnect(true),
+            },
+          ]
+        );
+      } else {
+        Alert.alert(t("binance.fail_title"), msg || t("binance.unknown_error"));
+      }
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const onConnect = async () => {
     if (apiKey.trim().length < 20 || apiSecret.trim().length < 20) {
       Alert.alert(t("binance.invalid_keys_title"), t("binance.invalid_keys_msg"));
       return;
     }
-    setBusy(true);
-    try {
-      const res = await api.binanceConnect(apiKey.trim(), apiSecret.trim());
-      setApiKey("");
-      setApiSecret("");
-      Alert.alert(
-        t("binance.success_title"),
-        t("binance.success_msg", { type: res.account_type || "SPOT", trade: res.can_trade ? t("common.yes") : t("common.no") })
-      );
-      await loadStatus();
-    } catch (e: any) {
-      Alert.alert(t("binance.fail_title"), e?.message || t("binance.unknown_error"));
-    } finally {
-      setBusy(false);
-    }
+    await doConnect(false);
   };
 
   const onDisconnect = () => {

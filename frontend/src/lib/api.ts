@@ -143,8 +143,8 @@ export const api = {
 
   // Binance Live
   binanceStatus: () => request<any>("/binance/status"),
-  binanceConnect: (api_key: string, api_secret: string) =>
-    request<any>("/binance/connect", {
+  binanceConnect: (api_key: string, api_secret: string, force: boolean = false) =>
+    request<any>(`/binance/connect${force ? "?force=true" : ""}`, {
       method: "POST",
       body: JSON.stringify({ api_key, api_secret }),
     }),

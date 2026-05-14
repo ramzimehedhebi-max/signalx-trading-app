@@ -342,6 +342,57 @@ test_plan:
   test_all: false
   test_priority: "high_first"
 
+# === 2026-05-14 — Binance force-save & geo-block handling ===
+# Backend task append: "Binance connect — geo-block 503 + ?force=true bypass"
+#   implemented: true
+#   working: true
+#   file: "/app/backend/routes/binance.py + /app/backend/binance_live.py"
+#   tested_by: "testing agent (backend_test_binance_force.py)"
+#   stuck_count: 0
+#   priority: "high"
+#   needs_retesting: false
+#   status_history:
+#     - working: true
+#       agent: "testing"
+#       comment: |
+#         Ran /app/backend_test_binance_force.py against https://binance-profit-2.preview.emergentagent.com/api
+#         as ramzimehedhebi@gmail.com / Trader2026. ALL 14/14 ASSERTIONS PASSED ✅.
+#           1. Short keys without force → 400 "Clés invalides" ✅
+#           2. Valid-format (64-char) fake keys without force → 503 with detail starting "GEO_BLOCKED|..." ✅
+#              (confirms new behavior — was 400 before, now correctly 503 so frontend can detect & offer force-save)
+#           3a. Force-save with valid-format keys → 200 {ok:true, unverified:true, can_trade:true, account_type:"UNVERIFIED", balances:[]} ✅
+#           3b. GET /binance/status after force-save → 200 {connected:true, can_trade:true, connected_at:"..."} ✅
+#           3c. GET /binance/account after force-save → 400 "Erreur Binance: All Binance endpoints unreachable…HTTP 451"
+#               (NOT "Binance non connecté" — proves user is correctly treated as connected; the geo-block at request time
+#                is the expected downstream effect, not an endpoint regression)
+#           4. Force-save with SHORT keys → still 400 "Clés invalides" ✅ (length validation enforced even with force=true)
+#           4b. Status still connected=false after rejected force ✅
+#           5a-d. Re-force-save → DELETE /binance/disconnect → 200 {ok:true}; status connected=false; /binance/account 400 "Binance non connecté" ✅
+#           6. DB verification via motor (db=test_database, users collection):
+#              binance_api_key_enc ✅, binance_api_secret_enc ✅, binance_connected_at ✅,
+#              binance_can_trade==true ✅, binance_unverified==true ✅
+#         No 500 errors. Backend logs clean. New behaviour fully matches spec.
+#         No code changes made by testing agent.
+
+agent_communication:
+    - agent: "testing"
+      message: |
+        BINANCE FORCE-SAVE + GEO-BLOCK BEHAVIOUR — 14/14 assertions PASS via
+        /app/backend_test_binance_force.py against the public ingress URL.
+        Highlights:
+          ✅ Without force: short keys → 400 "Clés invalides"; valid-format fake keys → 503 with
+             detail starting "GEO_BLOCKED|Le serveur ne peut pas joindre Binance…" (frontend can detect this prefix).
+          ✅ With ?force=true + valid-format keys: 200 {ok:true, unverified:true, can_trade:true,
+             account_type:"UNVERIFIED", balances:[]}; DB has all binance_* fields set
+             (api_key_enc, api_secret_enc, connected_at, can_trade=true, unverified=true).
+          ✅ With ?force=true + short keys: still 400 "Clés invalides" (length validation enforced).
+          ✅ GET /binance/status after force-save: {connected:true, can_trade:true, connected_at:...}
+          ✅ DELETE /binance/disconnect after force-save: 200 {ok:true}; status → connected:false;
+             /binance/account → 400 "Binance non connecté".
+        No 500s. The geo-block path correctly returns 503 with the GEO_BLOCKED prefix as required
+        (was previously masked as 400). Force-save correctly bypasses Binance validation while
+        keeping length validation. All other /binance/* behaviour preserved.
+
 agent_communication:
     - agent: "main"
       message: |
