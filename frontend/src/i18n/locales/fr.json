@@ -570,6 +570,59 @@
       "title": "Besoin d'aide ?",
       "text": "Écris-nous, on répond sous 24h ouvrées."
     },
-    "footer": "Crypto trading involves risk. Past performance does not guarantee future results."
+    "footer": "Crypto trading involves risk. Past performance does not guarantee future results.",
+    "video": {
+      "coming_soon": "🎬 Tutoriel vidéo bientôt disponible",
+      "coming_soon_desc": "On finalise le montage. Reviens vite — il couvre tout en 6 minutes.",
+      "watch_title": "Tutoriel vidéo (6 min)",
+      "watch_on_youtube": "Regarder sur YouTube",
+      "duration_label": "Durée : 6 minutes"
+    }
+  },
+  "quiz": {
+    "title": "Es-tu prêt pour le LIVE ?",
+    "question_n": "Question {{n}}/5",
+    "next": "Suivant",
+    "see_result": "Voir mon résultat",
+    "result": "Résultat",
+    "score_perfect": "🎉 Parfait ! Tu peux activer le mode LIVE.",
+    "score_retry": "📚 Pas encore prêt — relis le guide et recommence.",
+    "unlock_desc": "Tu as compris les bases. Tu peux activer le trading réel sur Binance.",
+    "retry_desc": "Tu as raté au moins une question. Avant de risquer de l'argent réel, on s'assure que tout est clair.",
+    "activate_live": "Activer LIVE maintenant",
+    "retry": "Refaire le quiz",
+    "read_help": "Lire le guide",
+    "activated_title": "⚡ Mode LIVE activé",
+    "activated_msg": "Le bot exécute maintenant de VRAIS ordres sur Binance.\n\nLimite par trade : ${{cap}}.",
+    "q1": {
+      "title": "Où sont stockés tes fonds quand le bot trade en LIVE ?",
+      "a": "Sur SignalX",
+      "b": "Sur Binance",
+      "c": "Dans un coffre-fort"
+    },
+    "q2": {
+      "title": "Quelle permission ne dois-tu JAMAIS activer sur tes clés API Binance ?",
+      "a": "Spot & Margin Trading",
+      "b": "Enable Reading",
+      "c": "Enable Withdrawals"
+    },
+    "q3": {
+      "title": "Avec un stop-loss à 3 %, quelle est la perte max théorique par trade ?",
+      "a": "3 % de la position",
+      "b": "100 % du capital",
+      "c": "50 % du capital"
+    },
+    "q4": {
+      "title": "Que fait le Kill-switch s'il est activé ?",
+      "a": "Le bot ferme toutes les positions immédiatement",
+      "b": "Le bot clôture ses positions ouvertes mais n'ouvre plus rien",
+      "c": "Le bot supprime tes clés API"
+    },
+    "q5": {
+      "title": "Peux-tu garantir de gagner de l'argent avec le bot ?",
+      "a": "Oui, c'est garanti",
+      "b": "Non, le trading crypto comporte des risques",
+      "c": "Oui, mais seulement avec Premium"
+    }
   }
 }

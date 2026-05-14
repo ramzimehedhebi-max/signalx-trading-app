@@ -577,6 +577,59 @@
       "title": "¿Necesitas ayuda?",
       "text": "Escríbenos, respondemos en 24 horas hábiles."
     },
-    "footer": "El trading de criptomonedas conlleva riesgo. El rendimiento pasado no garantiza resultados futuros."
+    "footer": "El trading de criptomonedas conlleva riesgo. El rendimiento pasado no garantiza resultados futuros.",
+    "video": {
+      "coming_soon": "🎬 Tutorial en vídeo próximamente",
+      "coming_soon_desc": "Estamos finalizando la edición. Vuelve pronto — cubre todo en 6 minutos.",
+      "watch_title": "Tutorial en vídeo (6 min)",
+      "watch_on_youtube": "Ver en YouTube",
+      "duration_label": "Duración: 6 minutos"
+    }
+  },
+  "quiz": {
+    "title": "¿Estás listo para el modo REAL?",
+    "question_n": "Pregunta {{n}}/5",
+    "next": "Siguiente",
+    "see_result": "Ver mi resultado",
+    "result": "Resultado",
+    "score_perfect": "🎉 ¡Perfecto! Puedes activar el modo REAL.",
+    "score_retry": "📚 Aún no estás listo — vuelve a leer la guía e inténtalo de nuevo.",
+    "unlock_desc": "Has comprendido los conceptos básicos. Ahora puedes habilitar el trading real en Binance.",
+    "retry_desc": "Has fallado al menos una pregunta. Antes de arriesgar dinero real, asegurémonos de que todo esté claro.",
+    "activate_live": "Activar modo REAL ahora",
+    "retry": "Reintentar el cuestionario",
+    "read_help": "Leer la guía",
+    "activated_title": "⚡ Modo REAL activado",
+    "activated_msg": "El bot ahora ejecutará órdenes REALES en Binance.\n\nLímite por operación: ${{cap}}.",
+    "q1": {
+      "title": "¿Dónde se almacenan tus fondos mientras el bot opera en modo REAL?",
+      "a": "En SignalX",
+      "b": "En Binance",
+      "c": "En una bóveda"
+    },
+    "q2": {
+      "title": "¿Qué permiso NO debes NUNCA habilitar en tus claves API de Binance?",
+      "a": "Spot & Margin Trading",
+      "b": "Enable Reading",
+      "c": "Enable Withdrawals"
+    },
+    "q3": {
+      "title": "Con un stop-loss del 3%, ¿cuál es la pérdida máxima teórica por operación?",
+      "a": "3% de la posición",
+      "b": "100% del capital",
+      "c": "50% del capital"
+    },
+    "q4": {
+      "title": "¿Qué hace el interruptor de emergencia cuando se activa?",
+      "a": "El bot cierra todas las posiciones inmediatamente",
+      "b": "El bot cierra sus posiciones abiertas pero no abre nuevas",
+      "c": "El bot elimina tus claves API"
+    },
+    "q5": {
+      "title": "¿Puedes garantizar ganar dinero con el bot?",
+      "a": "Sí, está garantizado",
+      "b": "No, el trading de criptomonedas implica riesgo",
+      "c": "Sí, pero solo con Premium"
+    }
   }
 }

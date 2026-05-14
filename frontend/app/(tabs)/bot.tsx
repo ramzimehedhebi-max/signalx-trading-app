@@ -125,6 +125,13 @@ export default function Bot() {
         Alert.alert(t("common.error"), e.message || t("bot.errors.enable_live_failed"));
       }
     };
+    // Send user to the mini-quiz before activating Live mode
+    // The quiz screen calls api.botUpdateConfig({live_mode:true}) on success itself.
+    const cap = cfg?.live_max_position_usdt || 50;
+    router.push({ pathname: "/live-quiz", params: { cap: String(cap) } });
+    return;
+    // (kept for fallback): if quiz screen is bypassed for any reason, original path
+    // eslint-disable-next-line no-unreachable
     if (Platform.OS === "web") {
       const ok =
         typeof window !== "undefined" &&

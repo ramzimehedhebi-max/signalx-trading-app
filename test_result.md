@@ -719,3 +719,58 @@ agent_communication:
         No backend tests needed (no business logic touched). No frontend regression — Profile
         screen + Help screen both render correctly.
 
+    - agent: "main"
+      message: |
+        VIDEO TUTORIAL EMBED + LIVE MODE MINI-QUIZ shipped.
+
+        1) VIDEO TUTORIAL (in /app/frontend/app/help.tsx):
+           - Added <VideoTutorial> React component, placed between Safety banner and Section 1
+           - Reads TUTORIAL_VIDEO_ID constant at top of help.tsx (currently empty string)
+           - When TUTORIAL_VIDEO_ID is empty: shows beautiful "Coming soon" placeholder card with
+             centered play icon, title "🎬 Tutoriel vidéo bientôt disponible", description
+           - When TUTORIAL_VIDEO_ID is filled with a YouTube video ID:
+             • On web → renders <iframe> with embedUrl, 16:9 aspect ratio, fullscreen-enabled
+             • On native (Expo Go) → renders a tappable card that opens YouTube in browser
+               via Linking.openURL(watchUrl) — avoids the React Native iframe limitations
+           - All copy translated in 8 languages (`help.video.*` namespace)
+           - To activate: edit /app/frontend/app/help.tsx line 19, set
+             `const TUTORIAL_VIDEO_ID = "your_youtube_id_here";`
+
+        2) VIDEO SCRIPT (in /app/VIDEO_SCRIPT.md):
+           Full 6-minute French shoot-ready script with:
+             • Hook (15s), Safety (45s), Deposit on Binance (1m30, 3 options with timing),
+               Connect API (1m15, with permissions emphasis), Configure Bot (1m30, Paper vs Live),
+               Withdraw (45s), Outro (30s)
+           - Production notes: voice tone, pacing (130-150 wpm), b-roll suggestions,
+             music/subtitle/thumbnail recommendations
+           - Upload checklist + how to plug the video ID once recorded
+
+        3) LIVE MODE MINI-QUIZ (in /app/frontend/app/live-quiz.tsx — NEW):
+           - 5 multiple-choice questions, each with 3 options (A/B/C)
+           - Topics: Where are funds stored / Withdrawal permission / Stop-loss meaning /
+             Kill-switch behavior / Trading is risky
+           - Progress bar on top, "Question N/5" label, animated Next CTA (disabled until choice)
+           - Haptics on selection (.selectionAsync) and success (notificationAsync)
+           - RESULT SCREEN:
+             • Big score "X/5" with green (5/5) or red (<5/5) color
+             • Per-question recap with check/cross icons
+             • 5/5 (passed) → CTA "Activer LIVE maintenant" → calls api.botUpdateConfig({live_mode:true})
+                              → routes to /(tabs)/bot with success Alert
+             • <5/5 (failed) → "Refaire le quiz" CTA + "Lire le guide" ghost button → /help
+           - Quiz is REQUIRED before activating Live: bot.tsx onToggleLive now routes to
+             /live-quiz?cap=<live_max_position_usdt> instead of showing a simple confirm
+
+        4) I18N — added 2 new namespaces in all 8 locales:
+           - `quiz.*` (29 keys: titles, CTAs, 5 questions × 3 choices, success/retry messages)
+           - `help.video.*` (5 keys: coming_soon, descriptions, watch_on_youtube, duration)
+           - FR + EN written natively; auto-translated to ES/DE/IT/PT/AR/ZH via Claude
+             (translate_i18n.py picked up 39 missing keys per language)
+           Total keys per locale now: 541
+
+        VISUAL VALIDATION via screenshot in French:
+        ✅ /live-quiz renders with progress bar, Q1 displayed, 3 choices clickable, "Suivant" CTA
+        ✅ /help renders the placeholder video card with play icon, title, description, then
+           continues seamlessly into Section 1
+
+        No backend changes. Bot engine still healthy (logs show BOT DIVERSIF + BOT SCAN every 5 min).
+

@@ -6,12 +6,17 @@ import {
   ScrollView,
   TouchableOpacity,
   Linking,
+  Platform,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
 import { theme } from "../src/theme";
+
+// 🎥 YouTube video tutorial — paste the YouTube video ID once recorded
+// Get it from https://www.youtube.com/watch?v=THIS_PART
+const TUTORIAL_VIDEO_ID = ""; // e.g. "dQw4w9WgXcQ" — leave empty to show coming-soon placeholder
 
 export default function HelpScreen() {
   const router = useRouter();
@@ -43,6 +48,9 @@ export default function HelpScreen() {
             <Text style={styles.safetyText}>{t("help.safety_text")}</Text>
           </View>
         </View>
+
+        {/* VIDEO TUTORIAL */}
+        <VideoTutorial t={t} />
 
         {/* SECTION 1: ACCOUNT */}
         <Section emoji="📝" title={t("help.s1.title")}>
@@ -189,8 +197,53 @@ export default function HelpScreen() {
   );
 }
 
-function Section({ emoji, title, children }: { emoji: string; title: string; children: React.ReactNode }) {
+function VideoTutorial({ t }: { t: any }) {
+  if (!TUTORIAL_VIDEO_ID) {
+    return (
+      <View style={styles.videoPlaceholder}>
+        <View style={styles.videoPlay}>
+          <Ionicons name="play" size={28} color={theme.colors.primary} />
+        </View>
+        <Text style={styles.videoSoonTitle}>{t("help.video.coming_soon")}</Text>
+        <Text style={styles.videoSoonText}>{t("help.video.coming_soon_desc")}</Text>
+      </View>
+    );
+  }
+  const embedUrl = `https://www.youtube.com/embed/${TUTORIAL_VIDEO_ID}`;
+  const watchUrl = `https://www.youtube.com/watch?v=${TUTORIAL_VIDEO_ID}`;
   return (
+    <View style={styles.videoCard}>
+      <Text style={styles.videoTitle}>🎬 {t("help.video.watch_title")}</Text>
+      {Platform.OS === "web" ? (
+        <View style={styles.videoFrameWrap}>
+          {React.createElement("iframe" as any, {
+            src: embedUrl,
+            style: { width: "100%", aspectRatio: "16 / 9", border: 0, borderRadius: 12 },
+            allow: "accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture",
+            allowFullScreen: true,
+          })}
+        </View>
+      ) : (
+        <TouchableOpacity
+          onPress={() => Linking.openURL(watchUrl)}
+          style={styles.videoMobileCta}
+          activeOpacity={0.85}
+        >
+          <View style={styles.videoPlay}>
+            <Ionicons name="play" size={26} color={theme.colors.primary} />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.videoMobileTitle}>{t("help.video.watch_on_youtube")}</Text>
+            <Text style={styles.videoMobileSub}>{t("help.video.duration_label")}</Text>
+          </View>
+          <Ionicons name="open-outline" size={18} color={theme.colors.primary} />
+        </TouchableOpacity>
+      )}
+    </View>
+  );
+}
+
+function Section({ emoji, title, children }: { emoji: string; title: string; children: React.ReactNode }) {  return (
     <View style={styles.section}>
       <Text style={styles.sectionTitle}>
         <Text style={{ fontSize: 18 }}>{emoji}</Text>  {title}
@@ -359,4 +412,28 @@ const styles = StyleSheet.create({
   faqA: { color: theme.colors.textSecondary, fontSize: 12, marginTop: 4, lineHeight: 17 },
 
   footer: { color: theme.colors.textMuted, fontSize: 11, textAlign: "center", marginTop: 12, marginBottom: 20, lineHeight: 16 },
+
+  videoCard: { padding: 14, borderRadius: 18, backgroundColor: theme.colors.surface, borderColor: theme.colors.border, borderWidth: 1 },
+  videoTitle: { color: "#fff", fontSize: 14, fontWeight: "800", marginBottom: 10 },
+  videoFrameWrap: { width: "100%", aspectRatio: 16 / 9, borderRadius: 12, overflow: "hidden" },
+  videoMobileCta: {
+    flexDirection: "row", alignItems: "center", gap: 12, padding: 12,
+    borderRadius: 14, backgroundColor: theme.colors.primary + "12",
+    borderColor: theme.colors.primary + "40", borderWidth: 1,
+  },
+  videoMobileTitle: { color: "#fff", fontWeight: "800", fontSize: 13 },
+  videoMobileSub: { color: theme.colors.textMuted, fontSize: 11, marginTop: 2 },
+  videoPlaceholder: {
+    padding: 22, borderRadius: 18, alignItems: "center",
+    backgroundColor: theme.colors.surface, borderColor: theme.colors.border, borderWidth: 1,
+    borderStyle: "dashed",
+  },
+  videoPlay: {
+    width: 56, height: 56, borderRadius: 28,
+    backgroundColor: theme.colors.primary + "22",
+    alignItems: "center", justifyContent: "center",
+    marginBottom: 10,
+  },
+  videoSoonTitle: { color: "#fff", fontSize: 14, fontWeight: "800", textAlign: "center" },
+  videoSoonText: { color: theme.colors.textSecondary, fontSize: 12, marginTop: 6, textAlign: "center", lineHeight: 17 },
 });

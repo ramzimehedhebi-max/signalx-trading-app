@@ -577,6 +577,59 @@
       "title": "Hai bisogno di aiuto?",
       "text": "Scrivici, rispondiamo entro 24 ore lavorative."
     },
-    "footer": "Il trading di criptovalute comporta rischi. Le performance passate non garantiscono risultati futuri."
+    "footer": "Il trading di criptovalute comporta rischi. Le performance passate non garantiscono risultati futuri.",
+    "video": {
+      "coming_soon": "🎬 Video tutorial in arrivo",
+      "coming_soon_desc": "Stiamo finalizzando il montaggio. Torna presto — copre tutto in 6 minuti.",
+      "watch_title": "Video tutorial (6 min)",
+      "watch_on_youtube": "Guarda su YouTube",
+      "duration_label": "Durata: 6 minuti"
+    }
+  },
+  "quiz": {
+    "title": "Sei pronto per la modalità LIVE?",
+    "question_n": "Domanda {{n}}/5",
+    "next": "Avanti",
+    "see_result": "Vedi il mio risultato",
+    "result": "Risultato",
+    "score_perfect": "🎉 Perfetto! Puoi abilitare la modalità LIVE.",
+    "score_retry": "📚 Non ancora pronto — rileggi la guida e riprova.",
+    "unlock_desc": "Hai compreso le basi. Ora puoi abilitare il trading reale su Binance.",
+    "retry_desc": "Hai sbagliato almeno una domanda. Prima di rischiare denaro reale, assicuriamoci che tutto sia chiaro.",
+    "activate_live": "Abilita LIVE ora",
+    "retry": "Riprova il quiz",
+    "read_help": "Leggi la guida",
+    "activated_title": "⚡ Modalità LIVE abilitata",
+    "activated_msg": "Il bot ora eseguirà ordini REALI su Binance.\n\nLimite per trade: ${{cap}}.",
+    "q1": {
+      "title": "Dove sono conservati i tuoi fondi mentre il bot opera in modalità LIVE?",
+      "a": "Su SignalX",
+      "b": "Su Binance",
+      "c": "In un caveau"
+    },
+    "q2": {
+      "title": "Quale permesso NON devi MAI abilitare sulle tue chiavi API Binance?",
+      "a": "Spot & Margin Trading",
+      "b": "Abilita Lettura",
+      "c": "Abilita Prelievi"
+    },
+    "q3": {
+      "title": "Con uno stop-loss del 3%, qual è la perdita massima teorica per trade?",
+      "a": "3% della posizione",
+      "b": "100% del capitale",
+      "c": "50% del capitale"
+    },
+    "q4": {
+      "title": "Cosa fa il Kill-switch quando viene attivato?",
+      "a": "Il bot chiude immediatamente tutte le posizioni",
+      "b": "Il bot chiude le posizioni aperte ma non ne apre di nuove",
+      "c": "Il bot elimina le tue chiavi API"
+    },
+    "q5": {
+      "title": "Puoi garantire di guadagnare denaro con il bot?",
+      "a": "Sì, è garantito",
+      "b": "No, il trading di criptovalute comporta rischi",
+      "c": "Sì, ma solo con Premium"
+    }
   }
 }

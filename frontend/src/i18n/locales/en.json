@@ -570,6 +570,59 @@
       "title": "Need help?",
       "text": "Drop us a line, we reply within 24 business hours."
     },
-    "footer": "Crypto trading involves risk. Past performance does not guarantee future results."
+    "footer": "Crypto trading involves risk. Past performance does not guarantee future results.",
+    "video": {
+      "coming_soon": "🎬 Video tutorial coming soon",
+      "coming_soon_desc": "We're finalizing the edit. Check back soon — it covers everything in 6 minutes.",
+      "watch_title": "Video tutorial (6 min)",
+      "watch_on_youtube": "Watch on YouTube",
+      "duration_label": "Duration: 6 minutes"
+    }
+  },
+  "quiz": {
+    "title": "Are you ready for LIVE?",
+    "question_n": "Question {{n}}/5",
+    "next": "Next",
+    "see_result": "See my result",
+    "result": "Result",
+    "score_perfect": "🎉 Perfect! You can enable LIVE mode.",
+    "score_retry": "📚 Not quite ready — re-read the guide and try again.",
+    "unlock_desc": "You've understood the basics. You can now enable real trading on Binance.",
+    "retry_desc": "You missed at least one question. Before risking real money, let's make sure everything is clear.",
+    "activate_live": "Enable LIVE now",
+    "retry": "Retry the quiz",
+    "read_help": "Read the guide",
+    "activated_title": "⚡ LIVE mode enabled",
+    "activated_msg": "The bot will now execute REAL orders on Binance.\n\nPer-trade cap: ${{cap}}.",
+    "q1": {
+      "title": "Where are your funds stored while the bot trades in LIVE?",
+      "a": "On SignalX",
+      "b": "On Binance",
+      "c": "In a vault"
+    },
+    "q2": {
+      "title": "Which permission must you NEVER enable on your Binance API keys?",
+      "a": "Spot & Margin Trading",
+      "b": "Enable Reading",
+      "c": "Enable Withdrawals"
+    },
+    "q3": {
+      "title": "With a 3% stop-loss, what is the theoretical max loss per trade?",
+      "a": "3% of the position",
+      "b": "100% of the capital",
+      "c": "50% of the capital"
+    },
+    "q4": {
+      "title": "What does the Kill-switch do when activated?",
+      "a": "The bot closes all positions immediately",
+      "b": "The bot closes its open positions but doesn't open new ones",
+      "c": "The bot deletes your API keys"
+    },
+    "q5": {
+      "title": "Can you guarantee making money with the bot?",
+      "a": "Yes, it's guaranteed",
+      "b": "No, crypto trading involves risk",
+      "c": "Yes, but only with Premium"
+    }
   }
 }

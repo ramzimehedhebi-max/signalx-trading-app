@@ -577,6 +577,59 @@
       "title": "Benötigen Sie Hilfe?",
       "text": "Schreiben Sie uns eine Nachricht, wir antworten innerhalb von 24 Werktagen."
     },
-    "footer": "Krypto-Trading birgt Risiken. Vergangene Performance garantiert keine zukünftigen Ergebnisse."
+    "footer": "Krypto-Trading birgt Risiken. Vergangene Performance garantiert keine zukünftigen Ergebnisse.",
+    "video": {
+      "coming_soon": "🎬 Video-Tutorial kommt bald",
+      "coming_soon_desc": "Wir finalisieren den Schnitt. Schau bald wieder vorbei — es deckt alles in 6 Minuten ab.",
+      "watch_title": "Video-Tutorial (6 Min.)",
+      "watch_on_youtube": "Auf YouTube ansehen",
+      "duration_label": "Dauer: 6 Minuten"
+    }
+  },
+  "quiz": {
+    "title": "Bist du bereit für LIVE?",
+    "question_n": "Frage {{n}}/5",
+    "next": "Weiter",
+    "see_result": "Mein Ergebnis sehen",
+    "result": "Ergebnis",
+    "score_perfect": "🎉 Perfekt! Du kannst den LIVE-Modus aktivieren.",
+    "score_retry": "📚 Noch nicht ganz bereit — lies die Anleitung erneut und versuche es nochmal.",
+    "unlock_desc": "Du hast die Grundlagen verstanden. Du kannst jetzt den echten Handel auf Binance aktivieren.",
+    "retry_desc": "Du hast mindestens eine Frage falsch beantwortet. Bevor du echtes Geld riskierst, lass uns sicherstellen, dass alles klar ist.",
+    "activate_live": "LIVE jetzt aktivieren",
+    "retry": "Quiz wiederholen",
+    "read_help": "Anleitung lesen",
+    "activated_title": "⚡ LIVE-Modus aktiviert",
+    "activated_msg": "Der Bot wird jetzt ECHTE Orders auf Binance ausführen.\n\nLimite pro Trade: ${{cap}}.",
+    "q1": {
+      "title": "Wo werden deine Mittel gespeichert, während der Bot im LIVE-Modus handelt?",
+      "a": "Auf SignalX",
+      "b": "Auf Binance",
+      "c": "In einem Tresor"
+    },
+    "q2": {
+      "title": "Welche Berechtigung darfst du bei deinen Binance API-Schlüsseln NIEMALS aktivieren?",
+      "a": "Spot- & Margin-Handel",
+      "b": "Lesezugriff aktivieren",
+      "c": "Auszahlungen aktivieren"
+    },
+    "q3": {
+      "title": "Bei einem 3% Stop-Loss, was ist der theoretische maximale Verlust pro Trade?",
+      "a": "3% der Position",
+      "b": "100% des Kapitals",
+      "c": "50% des Kapitals"
+    },
+    "q4": {
+      "title": "Was bewirkt der Kill-Switch, wenn er aktiviert wird?",
+      "a": "Der Bot schließt alle Positionen sofort",
+      "b": "Der Bot schließt seine offenen Positionen, öffnet aber keine neuen",
+      "c": "Der Bot löscht deine API-Schlüssel"
+    },
+    "q5": {
+      "title": "Kannst du garantieren, mit dem Bot Geld zu verdienen?",
+      "a": "Ja, es ist garantiert",
+      "b": "Nein, Krypto-Handel birgt Risiken",
+      "c": "Ja, aber nur mit Premium"
+    }
   }
 }

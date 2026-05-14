@@ -577,6 +577,59 @@
       "title": "Precisa de ajuda?",
       "text": "Envie-nos uma mensagem, respondemos em até 24 horas úteis."
     },
-    "footer": "Negociação de criptomoedas envolve risco. Desempenho passado não garante resultados futuros."
+    "footer": "Negociação de criptomoedas envolve risco. Desempenho passado não garante resultados futuros.",
+    "video": {
+      "coming_soon": "🎬 Tutorial em vídeo em breve",
+      "coming_soon_desc": "Estamos finalizando a edição. Volte em breve — ele cobre tudo em 6 minutos.",
+      "watch_title": "Tutorial em vídeo (6 min)",
+      "watch_on_youtube": "Assistir no YouTube",
+      "duration_label": "Duração: 6 minutos"
+    }
+  },
+  "quiz": {
+    "title": "Você está pronto para o modo AO VIVO?",
+    "question_n": "Pergunta {{n}}/5",
+    "next": "Próximo",
+    "see_result": "Ver meu resultado",
+    "result": "Resultado",
+    "score_perfect": "🎉 Perfeito! Você pode ativar o modo AO VIVO.",
+    "score_retry": "📚 Ainda não está pronto — releia o guia e tente novamente.",
+    "unlock_desc": "Você entendeu o básico. Agora você pode ativar negociações reais na Binance.",
+    "retry_desc": "Você errou pelo menos uma pergunta. Antes de arriscar dinheiro real, vamos ter certeza de que tudo está claro.",
+    "activate_live": "Ativar modo AO VIVO agora",
+    "retry": "Refazer o quiz",
+    "read_help": "Ler o guia",
+    "activated_title": "⚡ Modo AO VIVO ativado",
+    "activated_msg": "O bot agora executará ordens REAIS na Binance.\n\nLimite por operação: ${{cap}}.",
+    "q1": {
+      "title": "Onde seus fundos ficam armazenados enquanto o bot opera no modo AO VIVO?",
+      "a": "No SignalX",
+      "b": "Na Binance",
+      "c": "Em um cofre"
+    },
+    "q2": {
+      "title": "Qual permissão você NUNCA deve ativar nas suas chaves de API da Binance?",
+      "a": "Spot & Margin Trading",
+      "b": "Enable Reading",
+      "c": "Enable Withdrawals"
+    },
+    "q3": {
+      "title": "Com um stop-loss de 3%, qual é a perda máxima teórica por operação?",
+      "a": "3% da posição",
+      "b": "100% do capital",
+      "c": "50% do capital"
+    },
+    "q4": {
+      "title": "O que o Kill-switch faz quando ativado?",
+      "a": "O bot fecha todas as posições imediatamente",
+      "b": "O bot fecha suas posições abertas mas não abre novas",
+      "c": "O bot deleta suas chaves de API"
+    },
+    "q5": {
+      "title": "Você pode garantir ganhar dinheiro com o bot?",
+      "a": "Sim, é garantido",
+      "b": "Não, negociar cripto envolve risco",
+      "c": "Sim, mas apenas com Premium"
+    }
   }
 }
