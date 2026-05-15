@@ -15,6 +15,7 @@ export default function Profile() {
   const { t } = useTranslation();
   const [binance, setBinance] = useState<any>(null);
   const [premium, setPremium] = useState<any>(null);
+  const [unreadCount, setUnreadCount] = useState<number>(0);
 
   const loadBinance = useCallback(async () => {
     try {
@@ -24,6 +25,10 @@ export default function Profile() {
     try {
       const p = await api.premiumStatus();
       setPremium(p);
+    } catch {}
+    try {
+      const u = await api.unreadCount();
+      setUnreadCount(u?.count ?? u?.unread ?? 0);
     } catch {}
   }, []);
 
@@ -55,10 +60,33 @@ export default function Profile() {
     ]);
   };
 
-  const items: { icon: any; label: string; sub: string; onPress?: () => void }[] = [
-    { icon: "shield-checkmark", label: t("profile.security"), sub: t("profile.security_sub") },
-    { icon: "notifications", label: t("profile.notifications"), sub: t("profile.notifications_sub") },
-    { icon: "help-circle", label: t("profile.support"), sub: t("profile.support_sub"), onPress: () => router.push("/help") },
+  const items: { icon: any; label: string; sub: string; onPress?: () => void; badge?: number }[] = [
+    {
+      icon: "shield-checkmark",
+      label: t("profile.security"),
+      sub: t("profile.security_sub"),
+      onPress: () => {
+        if (Platform.OS === "web") {
+          // eslint-disable-next-line no-alert
+          typeof window !== "undefined" && window.alert("Bientôt disponible — Mot de passe & 2FA");
+        } else {
+          Alert.alert("Bientôt disponible", "La gestion du mot de passe et de la 2FA arrive très bientôt.");
+        }
+      },
+    },
+    {
+      icon: "notifications",
+      label: t("profile.notifications"),
+      sub: t("profile.notifications_sub"),
+      onPress: () => router.push("/notifications"),
+      badge: unreadCount,
+    },
+    {
+      icon: "help-circle",
+      label: t("profile.support"),
+      sub: t("profile.support_sub"),
+      onPress: () => router.push("/help"),
+    },
   ];
 
   return (
@@ -160,6 +188,11 @@ export default function Profile() {
             >
               <View style={styles.rowIconWrap}>
                 <Ionicons name={it.icon} color={theme.colors.primary} size={18} />
+                {!!it.badge && it.badge > 0 && (
+                  <View style={styles.badge}>
+                    <Text style={styles.badgeText}>{it.badge > 99 ? "99+" : it.badge}</Text>
+                  </View>
+                )}
               </View>
               <View style={{ flex: 1 }}>
                 <Text style={styles.rowLabel}>{it.label}</Text>
@@ -258,6 +291,27 @@ const styles = StyleSheet.create({
   rowIconWrap: {
     width: 38, height: 38, borderRadius: 12, alignItems: "center", justifyContent: "center",
     backgroundColor: "rgba(243,186,47,0.08)",
+    position: "relative",
+  },
+  badge: {
+    position: "absolute",
+    top: -4,
+    right: -4,
+    minWidth: 18,
+    height: 18,
+    borderRadius: 9,
+    backgroundColor: theme.colors.sell,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 5,
+    borderWidth: 2,
+    borderColor: theme.colors.surface,
+  },
+  badgeText: {
+    color: "#fff",
+    fontWeight: "900",
+    fontSize: 10,
+    lineHeight: 12,
   },
   rowLabel: { color: "#fff", fontWeight: "800", fontSize: 14 },
   rowSub: { color: theme.colors.textSecondary, fontSize: 11, marginTop: 2 },
