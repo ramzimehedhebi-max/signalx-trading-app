@@ -49,12 +49,32 @@ async def root():
     return {"name": "Crypto Signals API", "version": "1.0"}
 
 
+@app.get("/api/health")
+async def health():
+    """Lightweight health probe for deployment monitors (Emergent, Hetzner, etc.).
+    Returns 200 + DB ping result. Used by load balancers and uptime monitors."""
+    try:
+        # Minimal MongoDB ping (no auth needed for `ping`)
+        await client.admin.command("ping")
+        db_ok = True
+    except Exception:
+        db_ok = False
+    return {
+        "ok": True,
+        "service": "signalx-api",
+        "version": "1.0",
+        "db": db_ok,
+    }
+
+
 @app.on_event("startup")
 async def startup_event():
     """Spawn the bot engine background loop."""
+    logger.info("SignalX API starting (production-ready)")
     await _start_bot()
 
 
 @app.on_event("shutdown")
 async def shutdown_db_client():
+    logger.info("SignalX API shutting down")
     client.close()
