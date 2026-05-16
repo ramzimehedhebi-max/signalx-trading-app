@@ -38,8 +38,30 @@ async function request<T>(
     data = text;
   }
   if (!res.ok) {
-    const msg = (data && data.detail) || `Erreur ${res.status}`;
-    const err: any = new Error(typeof msg === "string" ? msg : JSON.stringify(msg));
+    // Build a user-friendly error message.
+    // 1) If backend returned a clean JSON {detail: "..."} → use that.
+    // 2) If Cloudflare/proxy returned a 5xx HTML page → show a clear "server temporarily down" message.
+    let msg: string;
+    if (data && typeof data === "object" && data.detail) {
+      msg = typeof data.detail === "string" ? data.detail : JSON.stringify(data.detail);
+    } else if (res.status >= 520 && res.status <= 530) {
+      // Cloudflare-specific gateway errors (520-530)
+      msg =
+        "Le serveur est temporairement indisponible (déploiement ou pic de charge). " +
+        "Réessaie dans 30 secondes.";
+    } else if (res.status === 502 || res.status === 503 || res.status === 504) {
+      msg =
+        "Le serveur ne répond pas (502/503/504). Réessaie dans quelques secondes.";
+    } else if (res.status === 429) {
+      msg = "Trop de tentatives. Attends 60 secondes avant de réessayer.";
+    } else if (res.status === 401) {
+      msg = "Session expirée. Reconnecte-toi.";
+    } else if (res.status === 404) {
+      msg = "Ressource introuvable.";
+    } else {
+      msg = `Erreur ${res.status}. Réessaie ou contacte le support.`;
+    }
+    const err: any = new Error(msg);
     err.status = res.status;
     err.requiresPremium = res.status === 402;
     throw err;
