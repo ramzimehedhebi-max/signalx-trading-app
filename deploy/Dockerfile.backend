@@ -12,7 +12,9 @@ WORKDIR /app
 
 # Install Python deps first (better Docker cache)
 COPY backend/requirements.txt /app/requirements.txt
-RUN pip install --no-cache-dir -r /app/requirements.txt
+# emergentintegrations lives on Emergent's private PyPI mirror — add as extra-index-url
+RUN pip install --no-cache-dir -r /app/requirements.txt \
+    --extra-index-url https://d33sy5i8bnduwe.cloudfront.net/simple/
 
 # Copy backend code
 COPY backend/ /app/
