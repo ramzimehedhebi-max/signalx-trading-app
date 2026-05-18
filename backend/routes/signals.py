@@ -4,6 +4,7 @@ from datetime import datetime, timezone, timedelta
 import json, httpx, asyncio, uuid, logging
 
 from core import db, get_current_user, BINANCE_BASE, EMERGENT_LLM_KEY
+from emergentintegrations.llm.chat import LlmChat, UserMessage
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
