@@ -355,10 +355,30 @@ async def bot_get_stats(user=Depends(get_current_user)):
         except Exception:
             pass
 
+    # In LIVE mode, fetch the real USDT Spot balance from Binance dynamically
+    live_balance_usdt = None
+    live_mode = bool(cfg.get("live_mode", False))
+    if live_mode:
+        try:
+            from services.binance_helpers import _get_user_binance
+            cli_b = await _get_user_binance(user["id"])
+            if cli_b:
+                bals = await cli_b.get_balances()
+                usdt = next((b for b in bals if b.get("asset") == "USDT"), None)
+                if usdt:
+                    live_balance_usdt = float(usdt.get("free", 0)) + float(usdt.get("locked", 0))
+        except Exception as e:
+            logger.warning(f"[bot/stats] live_balance fetch failed: {e}")
+
+    # capital_usdt: live wallet balance if LIVE mode + Binance OK, else paper config
+    capital_value = live_balance_usdt if live_balance_usdt is not None else cfg.get("capital_usdt", 1000.0)
+
     return {
         "enabled": cfg.get("enabled", False),
+        "live_mode": live_mode,
         "paper_balance_usdt": cfg.get("paper_balance_usdt", cfg.get("capital_usdt", 1000.0)),
-        "capital_usdt": cfg.get("capital_usdt", 1000.0),
+        "capital_usdt": capital_value,
+        "live_balance_usdt": live_balance_usdt,
         "total_realized_pnl": total_pnl,
         "unrealized_pnl": unrealized,
         "total_pnl": total_pnl + unrealized,
