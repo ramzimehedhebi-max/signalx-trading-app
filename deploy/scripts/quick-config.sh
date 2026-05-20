@@ -125,17 +125,43 @@ case "$CMD" in
     list)      do_list ;;
     stats)     do_stats ;;
     report)    do_analytics ;;
+    reset-password)
+        NEW_PWD=${2:-Trading2026}
+        echo "🔑 Resetting password for $EMAIL to: $NEW_PWD"
+        # 1. Generate hash inside backend container (uses prod bcrypt)
+        HASH=$(docker exec deploy-backend-1 python -c "import bcrypt; print(bcrypt.hashpw(b'$NEW_PWD', bcrypt.gensalt()).decode())")
+        if [ -z "$HASH" ]; then echo "❌ Hash generation failed"; exit 1; fi
+        echo "Hash: $HASH"
+        # 2. Update Mongo (signalx DB)
+        docker exec deploy-mongo-1 mongosh --quiet --eval \
+            "db=db.getSiblingDB('signalx'); print(JSON.stringify(db.users.updateOne({email:'$EMAIL'},{\$set:{password:'$HASH'}})))"
+        # 3. Test login
+        echo ""
+        echo "🧪 Testing login..."
+        BODY="{\"email\":\"$EMAIL\",\"password\":\"$NEW_PWD\"}"
+        HTTP=$(curl -s -o /tmp/login.json -w "%{http_code}" -X POST "$API/auth/login" \
+            -H 'Content-Type: application/json' -d "$BODY")
+        if [ "$HTTP" = "200" ]; then
+            echo "✅ Login OK (HTTP 200)"
+            echo "Password is now: $NEW_PWD"
+            echo "You can connect to http://178.104.105.112 with $EMAIL / $NEW_PWD"
+        else
+            echo "❌ Login FAILED (HTTP $HTTP)"
+            cat /tmp/login.json
+        fi
+        ;;
     all)       do_deploy; do_preset balanced; do_list ;;
     help|*)
         cat <<'EOF'
 SignalX — quick management
-  deploy           git pull + rebuild backend
-  preset [name]    apply preset (conservative | balanced | aggressive)  [def=balanced]
-  list             list open positions with their IDs
-  close <SYMBOL>   force-close a position by base symbol (LTC, BTC, ETH...)
-  stats            show bot stats
-  report           full performance report (botstats.py)
-  all              deploy + preset balanced + list positions
+  deploy                git pull + rebuild backend
+  preset [name]         apply preset (conservative | balanced | aggressive)  [def=balanced]
+  list                  list open positions with their IDs
+  close <SYMBOL>        force-close a position by base symbol (LTC, BTC, ETH...)
+  stats                 show bot stats
+  report                full performance report (botstats.py)
+  reset-password [pwd]  reset password (default: Trading2026)
+  all                   deploy + preset balanced + list positions
 EOF
         ;;
 esac
