@@ -575,6 +575,32 @@ async def _bot_evaluate_entries(user_id: str, cfg: dict):
             live_cap = float(cfg_now.get("live_max_position_usdt", 50.0))
             live_trade = min(trade_size, live_cap)
             try:
+                # ---- VERIFY REAL USDT FREE BALANCE ON BINANCE ----
+                # This prevents -2010 "Account has insufficient balance" errors
+                # which were spamming the notifications feed.
+                usdt_free = 0.0
+                try:
+                    balances = await bcli.get_balances()
+                    for b in balances:
+                        if b.get("asset") == "USDT":
+                            usdt_free = float(b.get("free", 0) or 0)
+                            break
+                except Exception as e:
+                    logger.warning(f"BOT LIVE balance lookup failed for {c['symbol']}: {e}")
+                    continue  # cannot proceed safely
+                # Sync DB capital_usdt so position-sizing reflects reality next cycle
+                try:
+                    await db.bot_configs.update_one(
+                        {"user_id": user_id},
+                        {"$set": {"capital_usdt": usdt_free}},
+                    )
+                except Exception:
+                    pass
+                # Cap the trade size by the actual free USDT (keep 1% buffer for fees / slippage)
+                spendable = usdt_free * 0.99
+                if spendable < live_trade:
+                    live_trade = spendable
+
                 # Fetch symbol filters once for LOT_SIZE step
                 sinfo = await bcli.get_symbol_info(c["symbol"])
                 step = 0.0
@@ -589,8 +615,11 @@ async def _bot_evaluate_entries(user_id: str, cfg: dict):
                             pass
                 lot_step = step
                 if live_trade < min_notional:
-                    logger.info(f"BOT LIVE skip {c['symbol']}: notional {live_trade:.2f} < min {min_notional}")
-                    continue
+                    logger.info(
+                        f"BOT LIVE skip {c['symbol']}: live_trade {live_trade:.2f} < min_notional {min_notional:.2f} "
+                        f"(usdt_free={usdt_free:.2f}) — silent skip, no notification"
+                    )
+                    continue  # silent skip, NO notification (was spamming Telegram)
                 order = await bcli.market_buy_quote(c["symbol"], live_trade)
                 ex = extract_executed(order)
                 if ex["qty"] <= 0 or ex["avg_price"] <= 0:

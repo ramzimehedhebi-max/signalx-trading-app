@@ -152,6 +152,21 @@ def _format_telegram_message(ntype: str, title: str, body: str, data: dict) -> s
 
 
 async def _create_notification(user_id: str, ntype: str, title: str, body: str, data: dict = None):
+    # ---------- Anti-spam: dedupe identical live_error per symbol within 30 min ----------
+    if ntype == "live_error":
+        sym = (data or {}).get("symbol")
+        if sym:
+            cutoff = datetime.now(timezone.utc) - timedelta(minutes=30)
+            existing = await db.notifications.find_one({
+                "user_id": user_id,
+                "type": "live_error",
+                "data.symbol": sym,
+                "created_at": {"$gte": cutoff},
+            })
+            if existing:
+                logger.info(f"NOTIF SKIP duplicate live_error {sym} (within 30min window)")
+                return
+
     notif = {
         "id": str(uuid.uuid4()),
         "user_id": user_id,
