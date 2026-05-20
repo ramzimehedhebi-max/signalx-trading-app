@@ -162,6 +162,8 @@ export const api = {
   unreadCount: () => request<any>("/notifications/unread-count"),
   markRead: (id: string) => request<any>(`/notifications/${id}/read`, { method: "POST" }),
   markAllRead: () => request<any>("/notifications/read-all", { method: "POST" }),
+  telegramStatus: () => request<any>("/notifications/telegram/status"),
+  telegramTest: () => request<any>("/notifications/telegram/test", { method: "POST" }),
 
   // Binance Live
   binanceStatus: () => request<any>("/binance/status"),

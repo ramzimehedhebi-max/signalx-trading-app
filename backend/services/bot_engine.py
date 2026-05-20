@@ -139,12 +139,54 @@ async def _close_position(user_id: str, position: dict, exit_price: float, reaso
     }.get(reason, reason)
     title = f"{icon} {sym} fermé : {pnl:+.2f} $"
     body = f"{reason_fr} · PnL {pnl_pct:+.2f}% · Sortie à ${exit_price:.4f}"
+
+    # Compute live balance (best-effort) only when we just executed a live sell
+    live_balance = None
+    if is_live:
+        try:
+            bcli2 = await _get_user_binance(user_id)
+            if bcli2:
+                balances = await bcli2.get_balances()
+                for b in balances:
+                    if b.get("asset") == "USDT":
+                        live_balance = float(b.get("free", 0)) + float(b.get("locked", 0))
+                        break
+        except Exception as e:
+            logger.warning(f"Live balance fetch failed (post-close): {e}")
+
+    # Compute duration
+    duration_str = None
+    try:
+        et = position.get("entry_time")
+        if et:
+            if isinstance(et, str):
+                et = datetime.fromisoformat(et.replace("Z", "+00:00"))
+            if et.tzinfo is None:
+                et = et.replace(tzinfo=timezone.utc)
+            delta = datetime.now(timezone.utc) - et
+            mins = int(delta.total_seconds() // 60)
+            h, m = divmod(mins, 60)
+            duration_str = f"{h}h {m:02d}m" if h else f"{m}m"
+    except Exception:
+        pass
+
     await _create_notification(
         user_id,
-        "trade_close",
+        "live_close" if is_live else "trade_close",
         title,
         body,
-        {"symbol": position["symbol"], "pnl": pnl, "pnl_pct": pnl_pct, "reason": reason},
+        {
+            "symbol": position["symbol"],
+            "pnl": pnl,
+            "pnl_pct": pnl_pct,
+            "reason": reason,
+            "entry": position["entry_price"],
+            "exit": exit_price,
+            "qty": position["quantity"],
+            "live": is_live,
+            "balance": live_balance,
+            "duration": duration_str,
+        },
     )
 
 
@@ -229,11 +271,21 @@ async def _close_position_partial(user_id: str, position: dict, exit_price: floa
 
     sym = symbolToBase_py(position["symbol"])
     await _create_notification(
-        user_id, "trade_close",
+        user_id, "live_close" if is_live else "trade_close",
         f"🪙 {sym} prise partielle {close_pct:.0f}%",
         f"+{pnl:.2f} $ verrouillés ({pnl_pct:+.2f}%) · Reste {100 - close_pct:.0f}% en cours",
-        {"symbol": position["symbol"], "pnl": pnl, "pnl_pct": pnl_pct,
-         "reason": reason, "partial": True, "close_pct": close_pct},
+        {
+            "symbol": position["symbol"],
+            "pnl": pnl,
+            "pnl_pct": pnl_pct,
+            "reason": reason,
+            "partial": True,
+            "close_pct": close_pct,
+            "entry": position["entry_price"],
+            "exit": exit_price,
+            "qty": qty_to_close,
+            "live": is_live,
+        },
     )
     # Mutate the in-memory position so subsequent checks in this cycle see the new qty
     position["quantity"] = remaining_qty
@@ -554,7 +606,13 @@ async def _bot_evaluate_entries(user_id: str, cfg: dict):
                     "live_buy",
                     f"💸 Achat LIVE : {symbolToBase_py(c['symbol'])}",
                     f"Acheté ${ex['quote']:.2f} @ ${entry:.4f} sur Binance",
-                    {"symbol": c["symbol"], "entry": entry, "qty": qty, "live": True},
+                    {
+                        "symbol": c["symbol"],
+                        "entry": entry,
+                        "qty": qty,
+                        "quote": ex["quote"],
+                        "live": True,
+                    },
                 )
             except Exception as e:
                 logger.exception(f"BOT LIVE BUY failed {c['symbol']}: {e}")

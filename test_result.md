@@ -342,6 +342,53 @@ test_plan:
   test_all: false
   test_priority: "high_first"
 
+# === 2026-05-20 — Telegram notification endpoints ===
+# Backend task append: "Telegram notification endpoints + LIVE event relay"
+#   implemented: true
+#   working: true
+#   file: "/app/backend/routes/notifications.py + /app/backend/services/notifications.py"
+#   tested_by: "testing agent (backend_test_telegram.py)"
+#   stuck_count: 0
+#   priority: "high"
+#   needs_retesting: false
+#   status_history:
+#     - working: true
+#       agent: "testing"
+#       comment: |
+#         Ran /app/backend_test_telegram.py against http://127.0.0.1:8001/api. 10/10 assertions PASSED.
+#         IMPORTANT: Admin credentials in /app/memory/test_credentials.md
+#           (ramzimehedhebi@gmail.com / SignalX2026!) are STALE — they return 401 "Identifiants invalides"
+#           against the current MongoDB. Tests fell back to trader@test.com / test1234 (lifetime premium),
+#           which is also documented in test_credentials.md. The endpoints being tested are user-agnostic,
+#           so this does not affect coverage. Recommend main agent to either reset the admin password
+#           or update test_credentials.md.
+#
+#         Detailed results:
+#           1. GET  /notifications/telegram/status without bearer token → 401 {"detail":"Authentification requise"} ✅
+#           2. POST /notifications/telegram/test  without bearer token → 401 {"detail":"Authentification requise"} ✅
+#           3. GET  /notifications/telegram/status (authed)            → 200 {configured:false, token_set:false, chat_id_set:false}
+#              All three keys present and bool-typed ✅
+#           4. In dev env (no TELEGRAM_BOT_TOKEN/TELEGRAM_CHAT_ID in /app/backend/.env) → all three false ✅
+#           5. POST /notifications/telegram/test (authed, no env vars) → 400 ✅
+#              Body: {"detail":"Telegram non configuré : ajoute TELEGRAM_BOT_TOKEN et TELEGRAM_CHAT_ID dans le .env du serveur."}
+#              (French message matches spec) ✅
+#           6. GET  /notifications                  → 200 {items:[11], unread:11} ✅
+#           7. GET  /notifications/unread-count     → 200 {unread:11} ✅
+#           8. POST /notifications/read-all         → 200 {ok:true} ✅
+#           9. GET  /notifications/unread-count after read-all → 200 {unread:0} ✅ (persistence confirmed)
+#
+#         Backend logs CLEAN — no import errors, no 500s. Service started normally after
+#         WatchFiles reload of routes/notifications.py and services/bot_engine.py:
+#           "SignalX API starting (production-ready)" / "Application startup complete."
+#         The new module-level imports `from services.notifications import TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID, _send_telegram`
+#         resolve cleanly. The asyncio.create_task(_send_telegram(...)) relay in _create_notification
+#         is fire-and-forget and won't fire in this env because both env vars are empty (early return in _send_telegram).
+#
+#         NOT TESTED (out of scope per review request):
+#           - Real Telegram delivery (no token in dev env — production VPS will have it)
+#           - LIVE event relay in _create_notification (would require triggering a real LIVE bot trade)
+#         No code changes made by testing agent.
+
 # === 2026-05-14 — Binance force-save & geo-block handling ===
 # Backend task append: "Binance connect — geo-block 503 + ?force=true bypass"
 #   implemented: true

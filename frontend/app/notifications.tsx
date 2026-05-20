@@ -7,6 +7,8 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   RefreshControl,
+  Alert,
+  Platform,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
@@ -45,6 +47,8 @@ export default function Notifications() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [tgStatus, setTgStatus] = useState<{ configured: boolean } | null>(null);
+  const [tgSending, setTgSending] = useState(false);
 
   const load = useCallback(async () => {
     try {
@@ -55,17 +59,51 @@ export default function Notifications() {
     }
   }, []);
 
+  const loadTg = useCallback(async () => {
+    try {
+      const s = await api.telegramStatus();
+      setTgStatus(s);
+    } catch (e) {
+      console.warn("tg status", e);
+    }
+  }, []);
+
   useEffect(() => {
     (async () => {
-      await load();
+      await Promise.all([load(), loadTg()]);
       setLoading(false);
     })();
-  }, [load]);
+  }, [load, loadTg]);
 
   const onRefresh = async () => {
     setRefreshing(true);
-    await load();
+    await Promise.all([load(), loadTg()]);
     setRefreshing(false);
+  };
+
+  const sendTelegramTest = async () => {
+    if (tgSending) return;
+    setTgSending(true);
+    try {
+      await api.telegramTest();
+      if (Platform.OS === "web") {
+        window.alert("✅ Message Telegram envoyé ! Ouvre ton chat Telegram pour le voir.");
+      } else {
+        Alert.alert(
+          "✅ Envoyé",
+          "Message Telegram envoyé ! Ouvre ton chat Telegram pour le voir."
+        );
+      }
+    } catch (e: any) {
+      const msg = e?.message || "Échec d'envoi";
+      if (Platform.OS === "web") {
+        window.alert("❌ " + msg);
+      } else {
+        Alert.alert("Erreur", msg);
+      }
+    } finally {
+      setTgSending(false);
+    }
   };
 
   const markAll = async () => {
@@ -169,6 +207,44 @@ export default function Notifications() {
           />
         }
       >
+        {/* Telegram banner */}
+        {tgStatus && (
+          <View style={[styles.tgBanner, tgStatus.configured ? styles.tgBannerOk : styles.tgBannerWarn]}>
+            <View style={styles.tgIconBox}>
+              <Ionicons
+                name="paper-plane"
+                size={18}
+                color={tgStatus.configured ? "#2AABEE" : theme.colors.textSecondary}
+              />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.tgTitle}>
+                {tgStatus.configured ? "Telegram connecté" : "Telegram non configuré"}
+              </Text>
+              <Text style={styles.tgSub} numberOfLines={2}>
+                {tgStatus.configured
+                  ? "Tu recevras une alerte sur Telegram à chaque trade LIVE (achat, clôture, erreur)."
+                  : "Ajoute TELEGRAM_BOT_TOKEN et TELEGRAM_CHAT_ID dans le .env du serveur pour activer."}
+              </Text>
+            </View>
+            {tgStatus.configured && (
+              <TouchableOpacity
+                style={styles.tgTestBtn}
+                onPress={sendTelegramTest}
+                disabled={tgSending}
+                testID="tg-test-btn"
+                activeOpacity={0.7}
+              >
+                {tgSending ? (
+                  <ActivityIndicator size="small" color="#0A0E27" />
+                ) : (
+                  <Text style={styles.tgTestBtnText}>Tester</Text>
+                )}
+              </TouchableOpacity>
+            )}
+          </View>
+        )}
+
         {items.length === 0 ? (
           <View style={styles.empty}>
             <Ionicons name="notifications-off-outline" size={36} color={theme.colors.textMuted} />
@@ -420,4 +496,42 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   closeBtnText: { color: theme.colors.textSecondary, fontWeight: "700", fontSize: 13 },
+
+  // Telegram banner
+  tgBanner: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    padding: 14,
+    borderRadius: 16,
+    borderWidth: 1,
+  },
+  tgBannerOk: {
+    backgroundColor: "rgba(42,171,238,0.08)",
+    borderColor: "rgba(42,171,238,0.35)",
+  },
+  tgBannerWarn: {
+    backgroundColor: theme.colors.surface,
+    borderColor: theme.colors.border,
+  },
+  tgIconBox: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: "rgba(42,171,238,0.15)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  tgTitle: { color: "#fff", fontWeight: "800", fontSize: 14 },
+  tgSub: { color: theme.colors.textSecondary, fontSize: 11, marginTop: 3, lineHeight: 15 },
+  tgTestBtn: {
+    backgroundColor: theme.colors.primary,
+    paddingVertical: 8,
+    paddingHorizontal: 14,
+    borderRadius: 10,
+    minWidth: 60,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  tgTestBtnText: { color: "#0A0E27", fontWeight: "900", fontSize: 12 },
 });
