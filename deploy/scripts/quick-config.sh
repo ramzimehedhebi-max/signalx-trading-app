@@ -8,20 +8,34 @@
 #   /opt/signalx/deploy/scripts/quick-config.sh deploy    # git pull + docker rebuild
 #   /opt/signalx/deploy/scripts/quick-config.sh all       # deploy + preset + list
 
+# Disable history expansion so '!' in passwords does not break
+set +H 2>/dev/null || true
 set -e
 
 API=http://localhost:8001/api
-EMAIL=ramzimehedhebi@gmail.com
-PASSWORD='SignalX2026!'
+EMAIL=${SIGNALX_EMAIL:-ramzimehedhebi@gmail.com}
+# Read password from env or prompt
+if [ -z "${SIGNALX_PASSWORD:-}" ]; then
+    # default fallback
+    SIGNALX_PASSWORD='SignalX2026!'
+fi
+PASSWORD="$SIGNALX_PASSWORD"
 
 login() {
-    local resp
-    resp=$(curl -sf -X POST "$API/auth/login" \
+    # Build JSON body via python to safely escape the password
+    local body
+    body=$(python3 -c "import json,os; print(json.dumps({'email': os.environ['E'], 'password': os.environ['P']}))" 2>/dev/null) \
+        || body="{\"email\":\"$EMAIL\",\"password\":\"$PASSWORD\"}"
+    local resp http
+    resp=$(E="$EMAIL" P="$PASSWORD" curl -sS -w "\n__HTTP__%{http_code}" -X POST "$API/auth/login" \
         -H 'Content-Type: application/json' \
-        -d "{\"email\":\"$EMAIL\",\"password\":\"$PASSWORD\"}") || {
-        echo "❌ Login failed" >&2
+        -d "$body")
+    http=$(echo "$resp" | grep -oE '__HTTP__[0-9]+' | tail -1 | sed 's/__HTTP__//')
+    resp=$(echo "$resp" | sed 's/__HTTP__[0-9]*$//')
+    if [ "$http" != "200" ]; then
+        echo "❌ Login HTTP=$http  resp=$resp" >&2
         return 1
-    }
+    fi
     echo "$resp" | grep -oE '"token":"[^"]+' | cut -d'"' -f4
 }
 
