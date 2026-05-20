@@ -12,7 +12,7 @@
 set +H 2>/dev/null || true
 set -e
 
-API=http://localhost:8001/api
+API=http://localhost/api
 EMAIL=${SIGNALX_EMAIL:-ramzimehedhebi@gmail.com}
 # Read password from env or prompt
 if [ -z "${SIGNALX_PASSWORD:-}" ]; then
