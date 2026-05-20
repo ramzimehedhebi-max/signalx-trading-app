@@ -421,7 +421,74 @@ test_plan:
 #         No 500 errors. Backend logs clean. New behaviour fully matches spec.
 #         No code changes made by testing agent.
 
+# === 2026-05-20 — Bot presets + force-close + daily summary infra ===
+# Backend task append: "Bot presets, force-close, daily summary infra"
+#   implemented: true
+#   working: true
+#   file: "/app/backend/routes/bot.py + /app/backend/services/bot_loop.py"
+#   tested_by: "testing agent (backend_test_bot_presets.py)"
+#   stuck_count: 0
+#   priority: "high"
+#   needs_retesting: false
+#   status_history:
+#     - working: true
+#       agent: "testing"
+#       comment: |
+#         Ran /app/backend_test_bot_presets.py against http://localhost:8001/api as trader@test.com / test1234.
+#         ALL 27/27 ASSERTIONS PASSED ✅.
+#           1. AUTH 401 without token on GET /bot/presets, POST /bot/preset/balanced,
+#              POST /bot/positions/<id>/force-close → all return 401 {"detail":"Authentification requise"} ✅
+#           2. Login → 200 (token len=188) ✅
+#           3. GET /bot/presets → 200, 3 presets returned (conservative/balanced/aggressive) with expected
+#              take_profit_pct values: conservative=3.0, balanced=5.0, aggressive=5.0 ✅
+#           4. POST /bot/preset/balanced → 200 {ok:true, preset:"balanced", config:{...}} ✅
+#           5. GET /bot/config after preset → take_profit_pct=5.0, max_positions=5 (preset applied correctly) ✅
+#           6. POST /bot/preset/nonexistent → 404 "Preset 'nonexistent' introuvable. Disponibles: conservative,
+#              balanced, aggressive." ✅
+#           7. POST /bot/positions/fake-id-12345/force-close → 404 "Position introuvable ou déjà fermée" ✅
+#           8. REAL FORCE-CLOSE TESTED END-TO-END: enabled bot via PUT /bot/config {enabled:true},
+#              triggered POST /bot/run-now → 200, GET /bot/positions returned an open PEPEUSDT position,
+#              POST /bot/positions/<id>/force-close → 200 {ok:true, symbol:"PEPEUSDT", exit_price:3.73e-06}.
+#              Verified position no longer in open list (still_open=0) → engine _close_position(reason="manual_close")
+#              worked correctly, current price fetched from Binance ✅
+#           9. Existing endpoints still healthy: GET /bot/config, /bot/stats, /bot/positions, /bot/trades,
+#              PUT /bot/config {interval_minutes:5} → all 200 ✅
+#          10. Backend logs CLEAN — no import errors after WatchFiles reload of routes/bot.py and
+#              services/bot_loop.py. "SignalX API starting (production-ready)" / "Bot engine loop started"
+#              / "Application startup complete." — confirms _daily_summary_loop and _send_daily_summary
+#              imports resolve cleanly. The daily summary loop spawns alongside the main bot loop in
+#              _start_bot() without errors.
+#         NOT TESTED (out of scope per review request):
+#           - Real Telegram daily summary delivery (no TELEGRAM_BOT_TOKEN in dev .env — would early-return)
+#           - LIVE trading force-close (paper mode tested, which routes through same _close_position)
+#         No code changes were made by testing agent.
+
 agent_communication:
+    - agent: "testing"
+      message: |
+        BOT PRESETS + FORCE-CLOSE + DAILY SUMMARY INFRA — 27/27 assertions PASS via
+        /app/backend_test_bot_presets.py against http://localhost:8001/api as trader@test.com / test1234.
+        Highlights:
+          ✅ 401 without token on all 3 new endpoints (GET /bot/presets, POST /bot/preset/<name>,
+             POST /bot/positions/<id>/force-close)
+          ✅ GET /bot/presets returns the 3 presets with correct take_profit_pct
+             (conservative=3.0, balanced=5.0, aggressive=5.0)
+          ✅ POST /bot/preset/balanced → 200 and GET /bot/config confirms take_profit_pct=5.0,
+             max_positions=5 (full preset dict persisted)
+          ✅ POST /bot/preset/nonexistent → 404 with French detail listing available names
+          ✅ POST /bot/positions/fake-id-12345/force-close → 404 "Position introuvable ou déjà fermée"
+          ✅ REAL force-close end-to-end: enabled bot → run-now created a PEPEUSDT paper position →
+             force-close returned 200 {ok:true, symbol:"PEPEUSDT", exit_price:3.73e-06} →
+             position correctly removed from open list (engine _close_position(reason="manual_close")
+             executed cleanly + Binance current price fetched)
+          ✅ All existing /bot/* endpoints still healthy (config/stats/positions/trades + PUT config)
+          ✅ Backend boots CLEAN with new services/bot_loop._daily_summary_loop and _send_daily_summary
+             imports — no import errors after the routes/bot.py + bot_loop.py reload.
+             "Bot engine loop started" logged; _start_bot now spawns both _bot_loop and
+             _daily_summary_loop as expected. Daily summary loop early-returns harmlessly because
+             TELEGRAM_BOT_TOKEN/CHAT_ID are absent in dev .env (as documented).
+        No 500s. No code changes made by testing agent.
+
     - agent: "testing"
       message: |
         BINANCE FORCE-SAVE + GEO-BLOCK BEHAVIOUR — 14/14 assertions PASS via

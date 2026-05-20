@@ -281,6 +281,131 @@ async def bot_reset(user=Depends(get_current_user)):
     return {"ok": True}
 
 
+# ====================== PRESET CONFIGS ======================
+BOT_PRESETS = {
+    "conservative": {
+        "take_profit_pct": 3.0,
+        "stop_loss_pct": 2.0,
+        "position_size_pct": 15.0,
+        "max_positions": 3,
+        "trailing_enabled": True,
+        "trailing_trigger_pct": 2.0,
+        "trailing_distance_pct": 1.0,
+        "partial_tp_enabled": True,
+        "partial_tp_level1_pct": 2.0,
+        "partial_tp_level1_close": 50.0,
+        "partial_tp_level2_pct": 4.0,
+        "partial_tp_level2_close": 30.0,
+        "ai_predictions_enabled": True,
+        "ai_exit_confidence": 60,
+        "strategy": "hybrid",
+        "diversification_enabled": True,
+        "max_per_category": 1,
+    },
+    "balanced": {
+        "take_profit_pct": 5.0,
+        "stop_loss_pct": 3.0,
+        "position_size_pct": 20.0,
+        "max_positions": 5,
+        "trailing_enabled": True,
+        "trailing_trigger_pct": 3.0,
+        "trailing_distance_pct": 2.0,
+        "partial_tp_enabled": True,
+        "partial_tp_level1_pct": 3.0,
+        "partial_tp_level1_close": 50.0,
+        "partial_tp_level2_pct": 6.0,
+        "partial_tp_level2_close": 30.0,
+        "ai_predictions_enabled": True,
+        "ai_exit_confidence": 65,
+        "strategy": "hybrid",
+        "diversification_enabled": True,
+        "max_per_category": 2,
+    },
+    "aggressive": {
+        "take_profit_pct": 5.0,
+        "stop_loss_pct": 3.0,
+        "position_size_pct": 12.0,
+        "max_positions": 8,
+        "trailing_enabled": True,
+        "trailing_trigger_pct": 3.0,
+        "trailing_distance_pct": 2.0,
+        "partial_tp_enabled": True,
+        "partial_tp_level1_pct": 3.0,
+        "partial_tp_level1_close": 40.0,
+        "partial_tp_level2_pct": 6.0,
+        "partial_tp_level2_close": 30.0,
+        "ai_predictions_enabled": True,
+        "ai_exit_confidence": 60,
+        "strategy": "hybrid",
+        "diversification_enabled": True,
+        "max_per_category": 3,
+    },
+}
+
+
+@router.get("/bot/presets")
+async def bot_list_presets(user=Depends(get_current_user)):
+    """List the 3 available bot presets and their settings."""
+    return {
+        "presets": [
+            {"name": "conservative", "label": "🛡 Conservateur",
+             "desc": "TP +3% / SL -2% / 3 positions max. Sécurité maximale.",
+             "config": BOT_PRESETS["conservative"]},
+            {"name": "balanced", "label": "⚖️ Équilibré",
+             "desc": "TP +5% / SL -3% / 5 positions. Recommandé pour la plupart.",
+             "config": BOT_PRESETS["balanced"]},
+            {"name": "aggressive", "label": "🚀 Agressif",
+             "desc": "TP +5% / SL -3% / 8 positions, plus petites. Diversification max.",
+             "config": BOT_PRESETS["aggressive"]},
+        ]
+    }
+
+
+@router.post("/bot/preset/{name}")
+async def bot_apply_preset(name: str, user=Depends(get_current_user)):
+    """Apply a preset configuration to the user's bot."""
+    if name not in BOT_PRESETS:
+        raise HTTPException(status_code=404, detail=f"Preset '{name}' introuvable. Disponibles: conservative, balanced, aggressive.")
+    preset = BOT_PRESETS[name]
+    await _get_or_create_bot_config(user["id"])
+    await db.bot_configs.update_one(
+        {"user_id": user["id"]},
+        {"$set": preset},
+    )
+    cfg = await db.bot_configs.find_one({"user_id": user["id"]}, {"_id": 0})
+    logger.info(f"BOT PRESET applied user={user['id'][:8]} preset={name}")
+    return {"ok": True, "preset": name, "config": cfg}
+
+
+# ====================== FORCE-CLOSE POSITION ======================
+@router.post("/bot/positions/{position_id}/force-close")
+async def bot_force_close_position(position_id: str, user=Depends(get_current_user)):
+    """Force-close an open position at the current market price (LIVE → real Binance sell)."""
+    pos = await db.bot_positions.find_one(
+        {"id": position_id, "user_id": user["id"], "status": "open"},
+        {"_id": 0},
+    )
+    if not pos:
+        raise HTTPException(status_code=404, detail="Position introuvable ou déjà fermée")
+
+    # Fetch current price
+    try:
+        async with httpx.AsyncClient(timeout=8.0) as cli:
+            r = await cli.get(
+                f"{BINANCE_BASE}/api/v3/ticker/price",
+                params={"symbol": pos["symbol"]},
+            )
+            r.raise_for_status()
+            current_price = float(r.json()["price"])
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"Impossible de récupérer le prix actuel: {e}")
+
+    # Use the engine close path (handles LIVE sell + notification + DB updates)
+    from services.bot_engine import _close_position
+    await _close_position(user["id"], pos, current_price, "manual_close")
+    return {"ok": True, "symbol": pos["symbol"], "exit_price": current_price}
+
+
 @router.get("/bot/positions")
 async def bot_get_positions(user=Depends(get_current_user)):
     cur = db.bot_positions.find({"user_id": user["id"], "status": "open"}, {"_id": 0}).sort("entry_time", -1)
