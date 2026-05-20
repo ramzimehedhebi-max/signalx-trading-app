@@ -165,6 +165,12 @@ export const api = {
   telegramStatus: () => request<any>("/notifications/telegram/status"),
   telegramTest: () => request<any>("/notifications/telegram/test", { method: "POST" }),
 
+  // Bot presets & management
+  botPresets: () => request<any>("/bot/presets"),
+  botApplyPreset: (name: string) => request<any>(`/bot/preset/${name}`, { method: "POST" }),
+  botForceClose: (positionId: string) =>
+    request<any>(`/bot/positions/${positionId}/force-close`, { method: "POST" }),
+
   // Binance Live
   binanceStatus: () => request<any>("/binance/status"),
   binanceConnect: (api_key: string, api_secret: string, force: boolean = false) =>
