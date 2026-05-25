@@ -68,6 +68,22 @@ async def _close_position(user_id: str, position: dict, exit_price: float, reaso
             try:
                 # Round qty DOWN to lot step
                 step = float(position.get("lot_step", 0)) or 0
+                # If step is missing (e.g. recovered position), fetch it from Binance
+                if step <= 0:
+                    try:
+                        sinfo = await bcli.get_symbol_info(position["symbol"])
+                        for f in sinfo.get("filters", []):
+                            if f.get("filterType") == "LOT_SIZE":
+                                step = float(f.get("stepSize", 0))
+                                break
+                        if step > 0:
+                            # Persist for next time
+                            await db.bot_positions.update_one(
+                                {"id": position["id"]}, {"$set": {"lot_step": step}}
+                            )
+                            logger.info(f"LIVE SELL fetched step_size for {position['symbol']}: {step}")
+                    except Exception as e:
+                        logger.warning(f"Could not fetch step_size for {position['symbol']}: {e}")
                 qty_to_sell = round_step(float(position["quantity"]), step) if step > 0 else float(position["quantity"])
                 if qty_to_sell <= 0:
                     raise RuntimeError("Quantité après arrondi = 0")
