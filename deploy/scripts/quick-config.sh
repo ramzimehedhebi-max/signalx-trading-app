@@ -123,6 +123,12 @@ do_recover() {
     docker exec deploy-backend-1 python /tmp/recover.py "$EMAIL"
 }
 
+do_resync() {
+    echo "🔄  RESYNC bot DB with Binance reality (wipes phantom trades + reinserts 4 real positions)..."
+    docker cp /opt/signalx/backend/tools/resync_with_binance.py deploy-backend-1:/tmp/resync.py >/dev/null
+    docker exec deploy-backend-1 python /tmp/resync.py
+}
+
 CMD=${1:-help}
 case "$CMD" in
     deploy)    do_deploy ;;
@@ -132,6 +138,7 @@ case "$CMD" in
     stats)     do_stats ;;
     report)    do_analytics ;;
     recover)   do_recover ;;
+    resync)    do_resync ;;
     reset-password)
         NEW_PWD=${2:-Trading2026}
         echo "🔑 Resetting password for $EMAIL to: $NEW_PWD"
