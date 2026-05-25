@@ -340,12 +340,33 @@ BOT_PRESETS = {
         "diversification_enabled": True,
         "max_per_category": 3,
     },
+    # "Let winners run, cut losers short" — asymmetric risk-reward.
+    # Pure 3-rule strategy: hard -3% stop, no partial TP, trailing TP to catch big moves.
+    # AI exit kept as safety net (only locks gains when high-confidence BAISSE predicted).
+    "letrun": {
+        "take_profit_pct": 5.0,          # triggers trailing TP (doesn't actually sell)
+        "stop_loss_pct": 3.0,            # hard stop — cuts losers fast
+        "position_size_pct": 20.0,
+        "max_positions": 4,              # concentrate on best opportunities
+        "trailing_enabled": True,        # trailing SL locks in gains
+        "trailing_trigger_pct": 3.0,
+        "trailing_distance_pct": 2.0,    # gives 2% breathing room from peak
+        "partial_tp_enabled": False,     # ❌ NEVER take partial profits — let it run!
+        "tp_trailing_enabled": True,     # ✅ trailing TP — winners can go +10%, +30%, +∞
+        "tp_trail_distance_pct": 2.0,
+        "ai_predictions_enabled": True,  # safety net — only closes winners on BAISSE pred
+        "ai_exit_confidence": 70,        # stricter threshold (vs 65 default)
+        "strategy": "hybrid",
+        "diversification_enabled": True,
+        "max_per_category": 2,
+        "compounding_enabled": True,     # re-invest profits automatically
+    },
 }
 
 
 @router.get("/bot/presets")
 async def bot_list_presets(user=Depends(get_current_user)):
-    """List the 3 available bot presets and their settings."""
+    """List the available bot presets and their settings."""
     return {
         "presets": [
             {"name": "conservative", "label": "🛡 Conservateur",
@@ -357,6 +378,9 @@ async def bot_list_presets(user=Depends(get_current_user)):
             {"name": "aggressive", "label": "🚀 Agressif",
              "desc": "TP +5% / SL -3% / 8 positions, plus petites. Diversification max.",
              "config": BOT_PRESETS["aggressive"]},
+            {"name": "letrun", "label": "🏃 Let-Run Safe",
+             "desc": "SL -3% strict / Pas de TP partiel / Trailing TP infini / IA sécurité. Laisse courir les gagnants, coupe les perdants vite.",
+             "config": BOT_PRESETS["letrun"]},
         ]
     }
 
