@@ -57,7 +57,11 @@
       "typedRoutes": true
     },
     "extra": {
-      "router": {}
-    }
+      "router": {},
+      "eas": {
+        "projectId": "e54d670b-a136-4b39-b3d6-9c7ecfc3a8ff"
+      }
+    },
+    "owner": "mehedhebi"
   }
 }
