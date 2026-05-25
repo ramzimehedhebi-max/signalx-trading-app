@@ -65,47 +65,86 @@ async def _close_position(user_id: str, position: dict, exit_price: float, reaso
     if is_live:
         bcli = await _get_user_binance(user_id)
         if bcli:
+            # ---- VERIFY REAL BINANCE BALANCE BEFORE SELLING ----
+            # Prevents -2010 (insufficient balance) and LOT_SIZE errors that
+            # spam Telegram notifications when the DB is out of sync with Binance.
+            base_asset = symbolToBase_py(position["symbol"])
+            real_qty = 0.0
             try:
-                # Round qty DOWN to lot step
-                step = float(position.get("lot_step", 0)) or 0
-                # If step is missing (e.g. recovered position), fetch it from Binance
-                if step <= 0:
-                    try:
-                        sinfo = await bcli.get_symbol_info(position["symbol"])
-                        for f in sinfo.get("filters", []):
-                            if f.get("filterType") == "LOT_SIZE":
-                                step = float(f.get("stepSize", 0))
-                                break
-                        if step > 0:
-                            # Persist for next time
-                            await db.bot_positions.update_one(
-                                {"id": position["id"]}, {"$set": {"lot_step": step}}
-                            )
-                            logger.info(f"LIVE SELL fetched step_size for {position['symbol']}: {step}")
-                    except Exception as e:
-                        logger.warning(f"Could not fetch step_size for {position['symbol']}: {e}")
-                qty_to_sell = round_step(float(position["quantity"]), step) if step > 0 else float(position["quantity"])
-                if qty_to_sell <= 0:
-                    raise RuntimeError("Quantité après arrondi = 0")
-                order = await bcli.market_sell(position["symbol"], qty_to_sell)
-                ex = extract_executed(order)
-                if ex["avg_price"] > 0:
-                    exit_price = ex["avg_price"]
-                live_order_id = order.get("orderId")
-                logger.info(
-                    f"BOT LIVE SELL {position['symbol']} qty={qty_to_sell} avg={ex['avg_price']:.6f} order={live_order_id}"
-                )
+                balances = await bcli.get_balances()
+                for b in balances:
+                    if b.get("asset") == base_asset:
+                        real_qty = float(b.get("free", 0) or 0)
+                        break
             except Exception as e:
-                logger.exception(f"LIVE SELL FAILED {position['symbol']}: {e}")
-                # Notify the user but still close the position in paper db
+                logger.warning(f"Could not fetch real balance for {base_asset}: {e}")
+
+            db_qty = float(position["quantity"])
+            # Phantom position: nothing held on Binance → clean up DB without an order
+            if real_qty <= 0:
+                logger.warning(
+                    f"LIVE SELL skipped {position['symbol']} — no {base_asset} on Binance "
+                    f"(DB qty={db_qty}). Marking position closed in DB (phantom)."
+                )
                 await _create_notification(
                     user_id,
                     "live_error",
-                    f"⚠️ Sortie LIVE échouée {symbolToBase_py(position['symbol'])}",
-                    f"Erreur Binance : {str(e)[:120]}. Position fermée en simulation.",
-                    {"symbol": position["symbol"], "error": str(e)[:200]},
+                    f"⚠️ Position fantôme nettoyée : {base_asset}",
+                    f"Aucun {base_asset} détecté sur Binance — DB désynchronisée. Position fermée sans ordre.",
+                    {"symbol": position["symbol"], "db_qty": db_qty, "real_qty": real_qty},
                 )
-                is_live = False  # fallback to paper bookkeeping
+                is_live = False  # fallback to paper bookkeeping (no real sell attempted)
+            else:
+                try:
+                    # Round qty DOWN to lot step
+                    step = float(position.get("lot_step", 0)) or 0
+                    # If step is missing (e.g. recovered position), fetch it from Binance
+                    if step <= 0:
+                        try:
+                            sinfo = await bcli.get_symbol_info(position["symbol"])
+                            for f in sinfo.get("filters", []):
+                                if f.get("filterType") == "LOT_SIZE":
+                                    step = float(f.get("stepSize", 0))
+                                    break
+                            if step > 0:
+                                # Persist for next time
+                                await db.bot_positions.update_one(
+                                    {"id": position["id"]}, {"$set": {"lot_step": step}}
+                                )
+                                logger.info(f"LIVE SELL fetched step_size for {position['symbol']}: {step}")
+                        except Exception as e:
+                            logger.warning(f"Could not fetch step_size for {position['symbol']}: {e}")
+
+                    # Cap qty by real balance (0.1% safety margin for dust / fees)
+                    target_qty = min(db_qty, real_qty * 0.999)
+                    qty_to_sell = round_step(target_qty, step) if step > 0 else target_qty
+                    if qty_to_sell <= 0:
+                        raise RuntimeError(
+                            f"Quantité après arrondi = 0 (db={db_qty}, real={real_qty}, step={step})"
+                        )
+                    logger.info(
+                        f"LIVE SELL prep {position['symbol']}: db_qty={db_qty} real_qty={real_qty} "
+                        f"-> selling {qty_to_sell} (step={step})"
+                    )
+                    order = await bcli.market_sell(position["symbol"], qty_to_sell)
+                    ex = extract_executed(order)
+                    if ex["avg_price"] > 0:
+                        exit_price = ex["avg_price"]
+                    live_order_id = order.get("orderId")
+                    logger.info(
+                        f"BOT LIVE SELL {position['symbol']} qty={qty_to_sell} avg={ex['avg_price']:.6f} order={live_order_id}"
+                    )
+                except Exception as e:
+                    logger.exception(f"LIVE SELL FAILED {position['symbol']}: {e}")
+                    # Notify the user but still close the position in paper db
+                    await _create_notification(
+                        user_id,
+                        "live_error",
+                        f"⚠️ Sortie LIVE échouée {symbolToBase_py(position['symbol'])}",
+                        f"Erreur Binance : {str(e)[:120]}. Position fermée en simulation.",
+                        {"symbol": position["symbol"], "error": str(e)[:200]},
+                    )
+                    is_live = False  # fallback to paper bookkeeping
 
     invested = position["entry_price"] * position["quantity"]
     exit_val = exit_price * position["quantity"]

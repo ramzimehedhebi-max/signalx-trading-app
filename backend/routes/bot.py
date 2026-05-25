@@ -498,15 +498,33 @@ async def bot_get_stats(user=Depends(get_current_user)):
     # capital_usdt: live wallet balance if LIVE mode + Binance OK, else paper config
     capital_value = live_balance_usdt if live_balance_usdt is not None else cfg.get("capital_usdt", 1000.0)
 
+    # ---- Compute a proper baseline for % display ----
+    # In LIVE mode the free USDT (~$1.58) is NOT the baseline — the real baseline
+    # is the total portfolio value before P&L = free_usdt + Σ(entry × qty of open positions).
+    # Using this baseline gives a realistic % (e.g. -0.73% instead of -52.6%).
+    if live_mode and live_balance_usdt is not None:
+        cost_basis_open = sum(
+            float(p.get("entry_price", 0)) * float(p.get("quantity", 0))
+            for p in open_positions
+        )
+        baseline = live_balance_usdt + cost_basis_open
+    else:
+        baseline = float(cfg.get("capital_usdt", 1000.0))
+
+    total_pnl_combined = total_pnl + unrealized
+    total_pnl_pct = (total_pnl_combined / baseline * 100) if baseline > 0 else 0.0
+
     return {
         "enabled": cfg.get("enabled", False),
         "live_mode": live_mode,
         "paper_balance_usdt": cfg.get("paper_balance_usdt", cfg.get("capital_usdt", 1000.0)),
         "capital_usdt": capital_value,
+        "capital_baseline": round(baseline, 2),
         "live_balance_usdt": live_balance_usdt,
         "total_realized_pnl": total_pnl,
         "unrealized_pnl": unrealized,
-        "total_pnl": total_pnl + unrealized,
+        "total_pnl": total_pnl_combined,
+        "total_pnl_pct": round(total_pnl_pct, 2),
         "trades_count": len(trades),
         "wins": len(wins),
         "losses": len(losses),
@@ -536,13 +554,40 @@ async def bot_get_analytics(user=Depends(get_current_user)):
     Returns: equity curve, win-rate breakdown, best/worst, drawdown, top symbols.
     """
     cfg = await _get_or_create_bot_config(user["id"])
-    capital_start = float(cfg.get("capital_usdt", 1000.0))
     trades = await db.bot_trades.find(
         {"user_id": user["id"]}, {"_id": 0}
     ).to_list(2000)
     open_positions = await db.bot_positions.find(
         {"user_id": user["id"], "status": "open"}, {"_id": 0}
     ).to_list(100)
+
+    # ---- Compute a sane capital_start baseline ----
+    # In LIVE mode the user's "capital_usdt" config field tracks the FREE USDT on Binance
+    # (e.g. $1.58 after spending most of it on open positions). Using that as a baseline
+    # made the % display absurd ("-52%" for a -$0.83 unrealized loss).
+    # The correct baseline = total portfolio value at the time positions were opened
+    #                      = free USDT  +  Σ (entry_price × qty of open positions)
+    # (Equivalent to: current_total_wallet - unrealized_pnl)
+    capital_start = float(cfg.get("capital_usdt", 1000.0))
+    if cfg.get("live_mode"):
+        try:
+            bcli_b = await _get_user_binance(user["id"])
+            if bcli_b:
+                bals = await bcli_b.get_balances()
+                free_usdt = 0.0
+                for b in bals:
+                    if b.get("asset") == "USDT":
+                        free_usdt = float(b.get("free", 0)) + float(b.get("locked", 0))
+                        break
+                cost_basis_open = sum(
+                    float(p.get("entry_price", 0)) * float(p.get("quantity", 0))
+                    for p in open_positions
+                )
+                live_baseline = free_usdt + cost_basis_open
+                if live_baseline > 0:
+                    capital_start = live_baseline
+        except Exception as e:
+            logger.warning(f"[bot/analytics] live baseline fetch failed: {e}")
 
     # Sort trades chronologically
     def _exit_dt(t):

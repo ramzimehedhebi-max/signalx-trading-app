@@ -205,7 +205,14 @@ export default function Bot() {
   }
 
   const totalPnl = stats.total_pnl || 0;
-  const totalPnlPct = stats.capital_usdt > 0 ? (totalPnl / stats.capital_usdt) * 100 : 0;
+  // Use the backend-computed % which has a correct baseline (handles LIVE/PAPER properly).
+  // Fallback only if backend doesn't return total_pnl_pct.
+  const totalPnlPct =
+    typeof stats.total_pnl_pct === "number"
+      ? stats.total_pnl_pct
+      : (stats.capital_baseline || 0) > 0
+        ? (totalPnl / stats.capital_baseline) * 100
+        : 0;
   const isProfit = totalPnl >= 0;
 
   return (

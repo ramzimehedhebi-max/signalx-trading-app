@@ -342,6 +342,98 @@ test_plan:
   test_all: false
   test_priority: "high_first"
 
+# === 2026-05-25 — P&L baseline fix VERIFIED ===
+# Backend task: "Fix P&L % calculation to use proper baseline + skip SELL on phantom positions"
+#   implemented: true
+#   working: true
+#   file: "/app/backend/routes/bot.py + /app/backend/services/bot_engine.py"
+#   tested_by: "testing agent (backend_test_pnl.py)"
+#   stuck_count: 0
+#   priority: "high"
+#   needs_retesting: false
+#   status_history:
+#     - working: true
+#       agent: "testing"
+#       comment: |
+#         Ran /app/backend_test_pnl.py against http://127.0.0.1:8001/api.
+#         ALL 17/17 ASSERTIONS PASSED ✅.
+#
+#         CREDENTIAL NOTE: ramzimehedhebi@gmail.com / SignalX2026! returned 401
+#         "Identifiants invalides" — stale on local MongoDB. Fell back to
+#         trader@test.com / test1234 (lifetime premium, paper mode, capital_usdt=48230.04).
+#         Recommend main agent to reset the admin password OR update /app/memory/test_credentials.md
+#         to flag the admin creds work on VPS only.
+#
+#         Detailed results:
+#           1. POST /api/auth/login → 200, JWT token len=188 ✅
+#           2. GET /api/health → 200 {"ok":true,"service":"signalx-api","version":"1.0","db":true} ✅
+#           3. GET /api/bot/config → 200, live_mode=False, capital_usdt=48230.04 ✅
+#           4. GET /api/bot/stats → 200 ✅
+#              - capital_baseline PRESENT (NEW FIELD) ✅ value=48230.04
+#              - total_pnl_pct PRESENT (NEW FIELD) ✅ value=-1.8
+#              - capital_baseline is finite float ✅
+#              - total_pnl_pct is finite float (not NaN/Infinity) ✅
+#              - Paper mode: capital_baseline ($48230.04) == cfg.capital_usdt ($48230.04) ✅
+#              - NO MORE absurd "-52.62%" value — total_pnl_pct=-1.8% is realistic
+#           5. GET /api/bot/analytics → 200 ✅
+#              - capital_start=48230.04 (> 0, NOT the residual free USDT) ✅
+#              - total_pnl_pct=-1.8 (reasonable, not extreme) ✅
+#              - Paper mode: capital_start == cfg.capital_usdt ✅
+#              - capital_current ($47363.13) == capital_start + realized_pnl + unrealized_pnl
+#                (diff=0.0, within rounding) ✅
+#           6. REGRESSION CHECKS — all pass:
+#              - GET /api/bot/config → 200 ✅
+#              - GET /api/bot/positions → 200 (array) ✅
+#              - GET /api/bot/trades → 200 (array) ✅
+#              - GET /api/bot/presets → 200 (3 presets: conservative/balanced/aggressive) ✅
+#              - GET /api/health → 200 {"ok":true} ✅
+#
+#         Backend logs CLEAN — no 500s, no import errors. WatchFiles reload of routes/bot.py
+#         and services/bot_engine.py completed without errors:
+#           "SignalX API starting (production-ready)" / "Bot engine loop started" /
+#           "Application startup complete."
+#         The new capital_baseline computation and phantom-balance check imports resolve cleanly.
+#
+#         NOT TESTED (out of scope per review request):
+#           - Real phantom-position SELL logic in _close_position (requires Binance LIVE
+#             account with mismatched balances — impossible to test in isolation).
+#             Confirmed the code path does NOT break startup or other endpoints.
+#
+#         No code changes were made by testing agent.
+
+# === 2026-06-XX — P&L Display Bug Fix + Phantom Position Cleanup ===
+# Backend task: "Fix P&L % calculation to use proper baseline + skip SELL on phantom positions"
+#   implemented: true
+#   working: NA  (needs testing)
+#   file:
+#     - /app/backend/routes/bot.py        (bot_get_stats + bot_get_analytics)
+#     - /app/backend/services/bot_engine.py (_close_position phantom-balance check)
+#   priority: "high"
+#   needs_retesting: true
+#   summary_of_changes:
+#     1) /api/bot/stats now returns capital_baseline (= free_usdt + sum(entry*qty of open positions)
+#        in LIVE mode, fallback capital_usdt for paper) and a properly-computed total_pnl_pct.
+#        Previously the frontend was dividing total_pnl by free USDT (~$1.58) which produced
+#        absurd "-52.62%" displays for a -$0.83 unrealized loss. Expected: ~-0.73%.
+#     2) /api/bot/analytics: capital_start in LIVE mode now uses free_usdt + cost_basis_open
+#        instead of cfg.capital_usdt. Equity curve & total_pnl_pct now reflect the real
+#        portfolio baseline.
+#     3) /app/backend/services/bot_engine.py _close_position():
+#        - Before attempting a LIVE market_sell, fetch real Binance balance for the base asset.
+#        - If real_qty <= 0 (phantom position / out-of-sync DB): mark position closed in paper
+#          books, send ONE "phantom cleaned" notification (no Binance order, no -2010 spam).
+#        - Else: cap qty_to_sell = min(db_qty, real_qty * 0.999) BEFORE round_step, to
+#          guarantee the order quantity never exceeds wallet balance. This eliminates the
+#          recurring "Binance error -2010 Insufficient balance" and LOT_SIZE failures the user
+#          saw in Telegram (Sortie LIVE échouée ETH, LTC).
+#   testing_required:
+#     - Login as ramzimehedhebi@gmail.com / SignalX2026! (or whichever credential is current)
+#     - GET /api/bot/stats: assert response contains "capital_baseline" and "total_pnl_pct" fields.
+#       In paper mode capital_baseline should equal capital_usdt config field.
+#     - GET /api/bot/analytics: assert capital_start > 0 (no division-by-tiny-number).
+#       In paper mode (live_mode=false) capital_start should equal cfg.capital_usdt.
+#     - Verify no regressions on existing endpoints (config, positions, presets, trades).
+
 # === 2026-05-20 — Telegram notification endpoints ===
 # Backend task append: "Telegram notification endpoints + LIVE event relay"
 #   implemented: true
