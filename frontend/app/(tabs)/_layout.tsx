@@ -2,11 +2,18 @@ import React from "react";
 import { Tabs } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { Platform, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTranslation } from "react-i18next";
 import { theme } from "../../src/theme";
 
 export default function TabsLayout() {
   const { t } = useTranslation();
+  const insets = useSafeAreaInsets();
+  // Reserve enough space at the bottom for both the Android gesture / nav bar
+  // (insets.bottom) and a comfortable tap target. iOS keeps its classic 84/28.
+  const bottomInset = insets.bottom || 0;
+  const tabBarPaddingBottom = Platform.OS === "ios" ? 28 : Math.max(8, bottomInset + 6);
+  const tabBarHeight = Platform.OS === "ios" ? 84 : 56 + tabBarPaddingBottom;
   return (
     <Tabs
       screenOptions={{
@@ -17,8 +24,8 @@ export default function TabsLayout() {
           backgroundColor: theme.colors.surface,
           borderTopColor: theme.colors.border,
           borderTopWidth: 1,
-          height: Platform.OS === "ios" ? 84 : 64,
-          paddingBottom: Platform.OS === "ios" ? 28 : 8,
+          height: tabBarHeight,
+          paddingBottom: tabBarPaddingBottom,
           paddingTop: 8,
         },
         tabBarLabelStyle: { fontSize: 10, fontWeight: "700", letterSpacing: 0.5 },
