@@ -36,6 +36,8 @@ export default function Bot() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [savingToggle, setSavingToggle] = useState(false);
   const [scanning, setScanning] = useState(false);
+  const [presets, setPresets] = useState<any[]>([]);
+  const [applyingPreset, setApplyingPreset] = useState<string | null>(null);
   const pollRef = useRef<any>(null);
 
   const load = useCallback(async () => {
@@ -54,6 +56,81 @@ export default function Bot() {
       console.warn(e);
     }
   }, []);
+
+  // Load available presets once at mount
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await api.botPresets();
+        setPresets(res?.presets || []);
+      } catch (e) {
+        console.warn("presets load failed", e);
+      }
+    })();
+  }, []);
+
+  // Detect which preset (if any) matches the current config snapshot
+  const detectActivePreset = useCallback((c: any, pList: any[]): string | null => {
+    if (!c || !pList?.length) return null;
+    // A preset is considered "active" if its key strategic params match cfg.
+    const keys = [
+      "take_profit_pct", "stop_loss_pct", "position_size_pct", "max_positions",
+      "partial_tp_enabled", "tp_trailing_enabled", "ai_exit_confidence",
+    ];
+    for (const p of pList) {
+      const pc = p.config || {};
+      let match = true;
+      for (const k of keys) {
+        if (pc[k] === undefined) continue;
+        // Compare numbers with small epsilon to avoid float quirks
+        const a = typeof pc[k] === "number" ? +pc[k] : pc[k];
+        const b = typeof c[k] === "number" ? +c[k] : c[k];
+        if (typeof a === "number" && typeof b === "number") {
+          if (Math.abs(a - b) > 0.001) { match = false; break; }
+        } else if (a !== b) {
+          match = false; break;
+        }
+      }
+      if (match) return p.name;
+    }
+    return null;
+  }, []);
+
+  const applyPreset = async (name: string, label: string) => {
+    if (applyingPreset) return;
+    const doApply = async () => {
+      setApplyingPreset(name);
+      try {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+        await api.botApplyPreset(name);
+        await load();
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        if (Platform.OS !== "web") {
+          Alert.alert("✅ Preset appliqué", `${label} est maintenant actif. Le bot s'adapte immédiatement.`);
+        }
+      } catch (e: any) {
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+        Alert.alert(t("common.error"), e?.message || "Impossible d'appliquer le preset");
+      } finally {
+        setApplyingPreset(null);
+      }
+    };
+
+    const confirmMsg = `Appliquer le preset "${label}" ?\n\nCela modifiera la stratégie du bot immédiatement. Vos positions ouvertes ne sont pas affectées.`;
+    if (Platform.OS === "web") {
+      const ok = typeof window !== "undefined" && window.confirm(confirmMsg);
+      if (ok) await doApply();
+      return;
+    }
+    Alert.alert(
+      "Confirmer le changement",
+      confirmMsg,
+      [
+        { text: t("common.cancel"), style: "cancel" },
+        { text: "Appliquer", style: "default", onPress: doApply },
+      ]
+    );
+  };
 
   useEffect(() => {
     (async () => {
@@ -386,6 +463,83 @@ export default function Bot() {
             )}
           </View>
         </View>
+
+        {/* ============== PRESET SELECTOR ============== */}
+        {presets.length > 0 && (() => {
+          const active = detectActivePreset(cfg, presets);
+          return (
+            <View style={styles.presetSection}>
+              <View style={styles.presetHeadRow}>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.presetTitle}>🎚 Preset de stratégie</Text>
+                  <Text style={styles.presetSub}>Tapez pour changer instantanément la stratégie du bot</Text>
+                </View>
+                {active && (
+                  <View style={styles.presetActiveBadge}>
+                    <View style={styles.presetActiveDot} />
+                    <Text style={styles.presetActiveBadgeText}>Actif</Text>
+                  </View>
+                )}
+              </View>
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles.presetScroll}
+              >
+                {presets.map((p) => {
+                  const isActive = active === p.name;
+                  const isApplying = applyingPreset === p.name;
+                  const pc = p.config || {};
+                  return (
+                    <TouchableOpacity
+                      key={p.name}
+                      onPress={() => applyPreset(p.name, p.label)}
+                      disabled={!!applyingPreset}
+                      activeOpacity={0.85}
+                      style={[styles.presetCard, isActive && styles.presetCardActive]}
+                      testID={`bot-preset-${p.name}`}
+                    >
+                      {isActive && (
+                        <View style={styles.presetCheckBadge}>
+                          <Ionicons name="checkmark" size={12} color="#000" />
+                        </View>
+                      )}
+                      <Text style={[styles.presetLabel, isActive && styles.presetLabelActive]}>{p.label}</Text>
+                      <Text style={styles.presetDesc} numberOfLines={3}>{p.desc}</Text>
+                      <View style={styles.presetStatsRow}>
+                        <View style={styles.presetStat}>
+                          <Text style={styles.presetStatLabel}>TP</Text>
+                          <Text style={[styles.presetStatValue, { color: theme.colors.buy }]}>+{pc.take_profit_pct}%</Text>
+                        </View>
+                        <View style={styles.presetStatDivider} />
+                        <View style={styles.presetStat}>
+                          <Text style={styles.presetStatLabel}>SL</Text>
+                          <Text style={[styles.presetStatValue, { color: theme.colors.sell }]}>-{pc.stop_loss_pct}%</Text>
+                        </View>
+                        <View style={styles.presetStatDivider} />
+                        <View style={styles.presetStat}>
+                          <Text style={styles.presetStatLabel}>Pos</Text>
+                          <Text style={styles.presetStatValue}>{pc.max_positions}</Text>
+                        </View>
+                      </View>
+                      {isApplying ? (
+                        <View style={styles.presetApplyBtn}>
+                          <ActivityIndicator size="small" color={theme.colors.primary} />
+                        </View>
+                      ) : (
+                        <View style={[styles.presetApplyBtn, isActive && styles.presetApplyBtnActive]}>
+                          <Text style={[styles.presetApplyBtnText, isActive && styles.presetApplyBtnTextActive]}>
+                            {isActive ? "✓ Actif" : "Appliquer"}
+                          </Text>
+                        </View>
+                      )}
+                    </TouchableOpacity>
+                  );
+                })}
+              </ScrollView>
+            </View>
+          );
+        })()}
 
         {/* Open positions */}
         <View style={styles.sectionHead}>
@@ -795,6 +949,76 @@ const styles = StyleSheet.create({
     borderColor: "rgba(0,227,150,0.3)", borderWidth: 1,
   },
   boostText: { color: theme.colors.buy, fontSize: 10, fontWeight: "800", letterSpacing: 0.5 },
+
+  // ============== PRESET SELECTOR ==============
+  presetSection: { marginTop: 18 },
+  presetHeadRow: {
+    flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 10,
+    paddingHorizontal: 2,
+  },
+  presetTitle: { color: "#fff", fontSize: 15, fontWeight: "900" },
+  presetSub: { color: theme.colors.textSecondary, fontSize: 11, marginTop: 2 },
+  presetActiveBadge: {
+    flexDirection: "row", alignItems: "center", gap: 5,
+    paddingHorizontal: 9, paddingVertical: 4, borderRadius: 999,
+    backgroundColor: "rgba(0,227,150,0.15)",
+    borderColor: "rgba(0,227,150,0.4)", borderWidth: 1,
+  },
+  presetActiveDot: {
+    width: 6, height: 6, borderRadius: 999, backgroundColor: theme.colors.buy,
+  },
+  presetActiveBadgeText: { color: theme.colors.buy, fontSize: 10, fontWeight: "900", letterSpacing: 0.5 },
+  presetScroll: { gap: 10, paddingRight: 4, paddingVertical: 2 },
+  presetCard: {
+    width: 220,
+    padding: 14,
+    borderRadius: 16,
+    backgroundColor: theme.colors.surface,
+    borderColor: theme.colors.border,
+    borderWidth: 1,
+    gap: 8,
+    position: "relative",
+  },
+  presetCardActive: {
+    borderColor: theme.colors.primary,
+    borderWidth: 2,
+    backgroundColor: "rgba(243,186,47,0.06)",
+  },
+  presetCheckBadge: {
+    position: "absolute",
+    top: -6,
+    right: -6,
+    width: 22, height: 22, borderRadius: 999,
+    backgroundColor: theme.colors.primary,
+    alignItems: "center", justifyContent: "center",
+    borderWidth: 2, borderColor: theme.colors.background,
+    zIndex: 10,
+  },
+  presetLabel: { color: "#fff", fontSize: 15, fontWeight: "900" },
+  presetLabelActive: { color: theme.colors.primary },
+  presetDesc: { color: theme.colors.textSecondary, fontSize: 11, lineHeight: 16, minHeight: 48 },
+  presetStatsRow: {
+    flexDirection: "row", alignItems: "center", marginTop: 4,
+    paddingVertical: 8,
+    borderTopWidth: 1, borderTopColor: theme.colors.border,
+    borderBottomWidth: 1, borderBottomColor: theme.colors.border,
+  },
+  presetStat: { flex: 1, alignItems: "center" },
+  presetStatDivider: { width: 1, height: 24, backgroundColor: theme.colors.border },
+  presetStatLabel: { color: theme.colors.textMuted, fontSize: 9, fontWeight: "800", letterSpacing: 0.5 },
+  presetStatValue: { color: "#fff", fontSize: 13, fontWeight: "900", marginTop: 2 },
+  presetApplyBtn: {
+    paddingVertical: 9, borderRadius: 10, alignItems: "center",
+    backgroundColor: theme.colors.surfaceAlt,
+    borderWidth: 1, borderColor: theme.colors.border,
+    minHeight: 36, justifyContent: "center",
+  },
+  presetApplyBtnActive: {
+    backgroundColor: "rgba(0,227,150,0.12)",
+    borderColor: "rgba(0,227,150,0.4)",
+  },
+  presetApplyBtnText: { color: theme.colors.textSecondary, fontSize: 12, fontWeight: "800", letterSpacing: 0.5 },
+  presetApplyBtnTextActive: { color: theme.colors.buy },
   trailPill: {
     flexDirection: "row", alignItems: "center", gap: 3,
     paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6,

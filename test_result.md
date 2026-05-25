@@ -342,6 +342,26 @@ test_plan:
   test_all: false
   test_priority: "high_first"
 
+# === 2026-05-25 — Preset Selector UI (Bot tab) ===
+# Frontend task: "Add preset selector cards on /bot page"
+#   implemented: true
+#   working: NA (frontend testing not run yet)
+#   file: "/app/frontend/app/(tabs)/bot.tsx + /app/backend/routes/bot.py (new letrun preset)"
+#   priority: "medium"
+#   needs_retesting: false (user will test on VPS production)
+#   summary_of_changes:
+#     - Added "letrun" preset to BOT_PRESETS (no partial TP + trailing TP + AI safety)
+#     - Added bot_list_presets endpoint exposes 4 presets now (was 3)
+#     - Frontend bot.tsx: new state `presets`, `applyingPreset`
+#     - useEffect at mount fetches GET /api/bot/presets and stores them
+#     - detectActivePreset() compares current cfg vs each preset's key fields
+#     - applyPreset(name) calls POST /api/bot/preset/{name} with confirm dialog
+#     - Horizontal scrollable card row inserted between Strategy summary and Open positions
+#     - Each card shows: label, description, TP/SL/Pos stats, "Appliquer" button
+#     - Currently-active preset shown with checkmark badge + golden border
+#   no_backend_test_needed: true  (endpoints already verified, only UI consumes them)
+
+
 # === 2026-05-25 — P&L baseline fix VERIFIED ===
 # Backend task: "Fix P&L % calculation to use proper baseline + skip SELL on phantom positions"
 #   implemented: true
