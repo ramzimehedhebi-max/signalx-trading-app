@@ -1,6 +1,13 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { Platform } from "react-native";
 
-const BASE_URL = process.env.EXPO_PUBLIC_BACKEND_URL;
+// Backend base URL resolution :
+// - Native (iOS/Android): MUST use EXPO_PUBLIC_BACKEND_URL (absolute https URL) — bundled at build time
+// - Web (browser): if EXPO_PUBLIC_BACKEND_URL is empty/unset, fall back to RELATIVE URLs
+//   (i.e. same origin as the page). This way the bundle works on any domain
+//   (signall.app, dev preview, etc.) without rebuilding.
+const RAW_BASE = process.env.EXPO_PUBLIC_BACKEND_URL || "";
+const BASE_URL = Platform.OS === "web" ? RAW_BASE : RAW_BASE; // identical for now; kept explicit for future tweaks
 const TOKEN_KEY = "auth_token";
 
 async function getToken() {
