@@ -117,6 +117,12 @@ do_analytics() {
     docker exec deploy-backend-1 python /tmp/x.py
 }
 
+do_recover() {
+    echo "♻️  Recovering orphan LIVE positions from Binance into bot DB..."
+    docker cp /opt/signalx/backend/tools/recover_positions.py deploy-backend-1:/tmp/recover.py >/dev/null
+    docker exec deploy-backend-1 python /tmp/recover.py "$EMAIL"
+}
+
 CMD=${1:-help}
 case "$CMD" in
     deploy)    do_deploy ;;
@@ -125,6 +131,7 @@ case "$CMD" in
     list)      do_list ;;
     stats)     do_stats ;;
     report)    do_analytics ;;
+    recover)   do_recover ;;
     reset-password)
         NEW_PWD=${2:-Trading2026}
         echo "🔑 Resetting password for $EMAIL to: $NEW_PWD"
@@ -161,6 +168,7 @@ SignalX — quick management
   stats                 show bot stats
   report                full performance report (botstats.py)
   reset-password [pwd]  reset password (default: Trading2026)
+  recover               re-inject orphan LIVE positions (LTC/BTC/ETH/XRP) into bot DB
   all                   deploy + preset balanced + list positions
 EOF
         ;;
