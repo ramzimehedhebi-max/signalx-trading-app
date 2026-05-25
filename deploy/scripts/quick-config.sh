@@ -42,11 +42,21 @@ login() {
 do_deploy() {
     echo "📦 Git pull..."
     cd /opt/signalx && git pull
-    echo "🐳 Rebuild backend..."
-    cd /opt/signalx/deploy && docker compose up -d --build backend
-    echo "⏳ Wait 12s for startup..."
-    sleep 12
-    echo "✅ Deploy done"
+    echo "🐳 Rebuild backend + frontend..."
+    cd /opt/signalx/deploy && docker compose up -d --build backend frontend
+    echo "⏳ Wait 15s for startup..."
+    sleep 15
+    echo "✅ Deploy done — hard-refresh your browser (Ctrl+Shift+R) to flush old JS bundle."
+}
+
+do_deploy_full() {
+    echo "📦 Git pull..."
+    cd /opt/signalx && git pull
+    echo "🐳 Full rebuild (no cache) backend + frontend..."
+    cd /opt/signalx/deploy && docker compose build --no-cache backend frontend && docker compose up -d backend frontend
+    echo "⏳ Wait 20s for startup..."
+    sleep 20
+    echo "✅ Full deploy done — hard-refresh your browser (Ctrl+Shift+R)."
 }
 
 do_preset() {
@@ -131,7 +141,8 @@ do_resync() {
 
 CMD=${1:-help}
 case "$CMD" in
-    deploy)    do_deploy ;;
+    deploy)      do_deploy ;;
+    deploy-full) do_deploy_full ;;
     preset)    do_preset "${2:-balanced}" ;;
     close)     do_close "$2" ;;
     list)      do_list ;;
@@ -168,7 +179,8 @@ case "$CMD" in
     help|*)
         cat <<'EOF'
 SignalX — quick management
-  deploy                git pull + rebuild backend
+  deploy                git pull + rebuild backend + frontend
+  deploy-full           git pull + FULL rebuild (no cache) backend + frontend
   preset [name]         apply preset (conservative | balanced | aggressive)  [def=balanced]
   list                  list open positions with their IDs
   close <SYMBOL>        force-close a position by base symbol (LTC, BTC, ETH...)
@@ -176,6 +188,7 @@ SignalX — quick management
   report                full performance report (botstats.py)
   reset-password [pwd]  reset password (default: Trading2026)
   recover               re-inject orphan LIVE positions (LTC/BTC/ETH/XRP) into bot DB
+  resync                wipe phantom trades + reinsert real Binance positions
   all                   deploy + preset balanced + list positions
 EOF
         ;;
