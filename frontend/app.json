@@ -2,7 +2,7 @@
   "expo": {
     "name": "SignalX",
     "slug": "signalx",
-    "version": "1.0.1",
+    "version": "1.0.2",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "signalx",
@@ -20,7 +20,7 @@
     },
     "android": {
       "package": "app.signall.signalx",
-      "versionCode": 2,
+      "versionCode": 3,
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#000000"

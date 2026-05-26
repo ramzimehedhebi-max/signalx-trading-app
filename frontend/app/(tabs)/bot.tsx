@@ -328,7 +328,26 @@ export default function Bot() {
           </View>
 
           <Text style={styles.balanceLabel}>{t("bot.stats.capital")} (USDT)</Text>
-          <Text style={styles.balance}>{fmtUsd(stats.paper_balance_usdt)}</Text>
+          {(() => {
+            // Display the REAL current portfolio value, not the static config field.
+            // LIVE mode: capital_baseline (= USDT free + Σ entry×qty open positions) + total_pnl
+            // PAPER mode: paper_balance_usdt + total_pnl (since paper P&L isn't subtracted yet)
+            const baseline = stats.live_mode
+              ? (stats.capital_baseline || stats.live_balance_usdt || 0)
+              : (stats.paper_balance_usdt || stats.capital_usdt || 0);
+            const currentCapital = baseline + (stats.total_pnl || 0);
+            const freeUsdt = stats.live_mode ? (stats.live_balance_usdt || 0) : null;
+            return (
+              <>
+                <Text style={styles.balance}>{fmtUsd(currentCapital)}</Text>
+                {freeUsdt !== null && (
+                  <Text style={styles.balanceSub}>
+                    💵 {fmtUsd(freeUsdt)} libre · 📊 {fmtUsd(currentCapital - freeUsdt)} en positions
+                  </Text>
+                )}
+              </>
+            );
+          })()}
 
           <View style={styles.pnlRow}>
             <View style={[styles.pnlPill, { backgroundColor: isProfit ? "rgba(0,227,150,0.15)" : "rgba(255,69,96,0.15)" }]}>
@@ -915,6 +934,7 @@ const styles = StyleSheet.create({
 
   balanceLabel: { color: theme.colors.textMuted, fontSize: 11, fontWeight: "800", letterSpacing: 1.5, marginTop: 18 },
   balance: { color: "#fff", fontSize: 32, fontWeight: "900", marginTop: 4, letterSpacing: -1 },
+  balanceSub: { color: theme.colors.textSecondary, fontSize: 11, fontWeight: "600", marginTop: 4, letterSpacing: 0.2 },
   pnlRow: { flexDirection: "row", marginTop: 8 },
   pnlPill: { flexDirection: "row", alignItems: "center", gap: 4, paddingHorizontal: 10, paddingVertical: 5, borderRadius: 999 },
   pnlText: { fontWeight: "800", fontSize: 12 },
